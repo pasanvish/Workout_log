@@ -1,8 +1,13 @@
 
-export enum WorkoutDay {
-    BicepsTricepsShoulders = "Biceps, Triceps & Shoulders",
-    ChestBack = "Chest & Back",
-    Legs = "Legs"
+export interface Profile {
+  id: string;
+  name: string;
+}
+
+export interface CustomRoutine {
+  id: string;
+  name: string;
+  exercises: string[];
 }
 
 export interface Set {
@@ -12,13 +17,13 @@ export interface Set {
 }
 
 export interface Exercise {
-    name: string;
+    name:string;
     sets: Set[];
 }
 
 export interface WorkoutLog {
     id: string;
     date: string;
-    day: WorkoutDay;
+    routineName: string;
     exercises: Exercise[];
 }

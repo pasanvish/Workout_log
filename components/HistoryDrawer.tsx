@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import WorkoutHistory from './WorkoutHistory';
 import { WorkoutLog } from '../types';
@@ -7,9 +8,10 @@ interface HistoryDrawerProps {
   onClose: () => void;
   logs: WorkoutLog[];
   onImportLogs: (logs: WorkoutLog[]) => void;
+  onExportLogs: () => void;
 }
 
-const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, onImportLogs }) => {
+const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, onImportLogs, onExportLogs }) => {
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,7 +61,7 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, on
         aria-labelledby="history-drawer-title"
       >
         <div className="h-full flex flex-col">
-            <WorkoutHistory logs={logs} onImportLogs={onImportLogs} onClose={onClose} />
+            <WorkoutHistory logs={logs} onImportLogs={onImportLogs} onExportLogs={onExportLogs} onClose={onClose} />
         </div>
       </div>
     </>

@@ -1,10 +1,12 @@
+
 import React, { useState, useMemo, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { WorkoutLog, WorkoutDay } from '../types';
+import { WorkoutLog } from '../types';
 
 interface WorkoutHistoryProps {
   logs: WorkoutLog[];
   onImportLogs: (logs: WorkoutLog[]) => void;
+  onExportLogs: () => void;
   onClose: () => void;
 }
 
@@ -26,9 +28,9 @@ const NoDataIcon = () => (
   </svg>
 );
 
-const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onClose }) => {
+const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose }) => {
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
-  const [selectedDayFilter, setSelectedDayFilter] = useState<WorkoutDay | 'all'>('all');
+  const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uniqueExercises = useMemo(() => {
@@ -38,19 +40,22 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onC
     });
     return Array.from(exerciseSet).sort();
   }, [logs]);
+  
+  const uniqueRoutines = useMemo(() => {
+      const routineSet = new Set<string>();
+      logs.forEach(log => routineSet.add(log.routineName));
+      return Array.from(routineSet).sort();
+  }, [logs]);
 
   const filteredLogs = useMemo(() => {
-    if (selectedDayFilter === 'all') return logs;
-    return logs.filter(log => log.day === selectedDayFilter);
-  }, [logs, selectedDayFilter]);
+    if (selectedRoutineFilter === 'all') return logs;
+    return logs.filter(log => log.routineName === selectedRoutineFilter);
+  }, [logs, selectedRoutineFilter]);
 
   const chartData = useMemo(() => {
     if (!selectedExercise) return [];
-    
     const data: { date: string; maxWeight: number }[] = [];
-    
     const relevantLogs = [...logs].reverse().filter(log => log.exercises.some(ex => ex.name === selectedExercise));
-    
     relevantLogs.forEach(log => {
         const exercise = log.exercises.find(ex => ex.name === selectedExercise);
         if (exercise) {
@@ -63,22 +68,8 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onC
             }
         }
     });
-    
     return data;
   }, [logs, selectedExercise]);
-
-  const handleExport = () => {
-    if (logs.length === 0) {
-        alert("No data to export.");
-        return;
-    }
-    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(logs, null, 2))}`;
-    const link = document.createElement("a");
-    link.href = jsonString;
-    link.download = `gym-workout-logs-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    link.remove();
-  };
 
   const handleImportClick = () => {
       fileInputRef.current?.click();
@@ -193,17 +184,17 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onC
           <h3 className="text-2xl font-bold text-center text-text-primary mt-8 mb-2">Session Logs</h3>
            <div className="flex flex-col md:flex-row gap-4 items-center mb-6 bg-background-dark/50 p-4 rounded-xl">
             <select
-              onChange={(e) => setSelectedDayFilter(e.target.value as WorkoutDay | 'all')}
-              value={selectedDayFilter}
+              onChange={(e) => setSelectedRoutineFilter(e.target.value)}
+              value={selectedRoutineFilter}
               className="w-full md:w-auto bg-card-dark border border-border-color text-text-primary rounded-lg focus:ring-brand-primary focus:border-brand-primary p-2.5"
             >
-              <option value="all">All Workout Days</option>
-              {Object.values(WorkoutDay).map(day => (
+              <option value="all">All Routines</option>
+              {uniqueRoutines.map(day => (
                 <option key={day} value={day}>{day}</option>
               ))}
             </select>
             <div className="flex gap-2 ml-auto">
-                <button onClick={handleExport} className="flex items-center px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600 transition-colors">
+                <button onClick={onExportLogs} className="flex items-center px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600 transition-colors">
                     <DownloadIcon/>
                     Export
                 </button>
@@ -219,7 +210,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onC
               <div key={log.id} className="bg-card-dark/50 p-5 rounded-xl shadow-lg border border-border-color/50 transform transition-all hover:shadow-brand-primary/20 hover:border-brand-primary/50 hover:scale-[1.02]">
                 <div className="flex justify-between items-start mb-4 pb-3 border-b border-border-color/50">
                   <div>
-                      <h3 className="font-bold text-xl text-brand-light">{log.day}</h3>
+                      <h3 className="font-bold text-xl text-brand-light">{log.routineName}</h3>
                       <span className="text-sm text-text-secondary">{new Date(log.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                   </div>
                   <div className="text-xs font-mono bg-background-dark text-text-secondary px-2 py-1 rounded-full">

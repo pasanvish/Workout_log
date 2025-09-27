@@ -1,52 +1,113 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import WorkoutLogger from './components/WorkoutLogger';
 import HistoryDrawer from './components/HistoryDrawer';
-import { WorkoutLog } from './types';
+import ProfileManager from './components/ProfileManager';
+import { WorkoutLog, Profile, CustomRoutine } from './types';
 
 const App: React.FC = () => {
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
-  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
+  
+  // App-wide state
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [workoutLogs, setWorkoutLogs] = useState<Record<string, WorkoutLog[]>>({});
+  const [customRoutines, setCustomRoutines] = useState<Record<string, CustomRoutine[]>>({});
+  const [isAppReady, setIsAppReady] = useState(false);
+
 
   useEffect(() => {
     try {
-      const savedLogs = localStorage.getItem('workoutLogs');
-      if (savedLogs) {
-        const parsedLogs = JSON.parse(savedLogs);
-        if (Array.isArray(parsedLogs)) {
-            const sortedLogs = parsedLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setWorkoutLogs(sortedLogs);
-        }
-      }
-    } catch (error)
- {
-      console.error("Failed to load workout logs from localStorage", error);
-    }
-  }, []);
+      const savedProfiles = JSON.parse(localStorage.getItem('profiles') || '[]');
+      const savedActiveProfileId = JSON.parse(localStorage.getItem('activeProfileId') || 'null');
+      const savedWorkoutLogs = JSON.parse(localStorage.getItem('workoutLogs') || '{}');
+      const savedCustomRoutines = JSON.parse(localStorage.getItem('customRoutines') || '{}');
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('workoutLogs', JSON.stringify(workoutLogs));
+      setProfiles(savedProfiles);
+      setActiveProfileId(savedActiveProfileId);
+      setWorkoutLogs(savedWorkoutLogs);
+      setCustomRoutines(savedCustomRoutines);
     } catch (error) {
-      console.error("Failed to save workout logs to localStorage", error);
+      console.error("Failed to load data from localStorage", error);
+    } finally {
+      setIsAppReady(true);
     }
-  }, [workoutLogs]);
-
-  const addWorkoutLog = useCallback((log: WorkoutLog) => {
-    setWorkoutLogs(prevLogs => [log, ...prevLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    setIsHistoryDrawerOpen(true);
   }, []);
+
+  useEffect(() => {
+    if(!isAppReady) return;
+    try {
+      localStorage.setItem('profiles', JSON.stringify(profiles));
+      localStorage.setItem('activeProfileId', JSON.stringify(activeProfileId));
+      localStorage.setItem('workoutLogs', JSON.stringify(workoutLogs));
+      localStorage.setItem('customRoutines', JSON.stringify(customRoutines));
+    } catch (error) {
+      console.error("Failed to save data to localStorage", error);
+    }
+  }, [profiles, activeProfileId, workoutLogs, customRoutines, isAppReady]);
+
+  const activeProfile = useMemo(() => profiles.find(p => p.id === activeProfileId), [profiles, activeProfileId]);
+  const activeLogs = useMemo(() => (activeProfileId && workoutLogs[activeProfileId]) || [], [workoutLogs, activeProfileId]);
+  const activeRoutines = useMemo(() => (activeProfileId && customRoutines[activeProfileId]) || [], [customRoutines, activeProfileId]);
+  
+  const addWorkoutLog = useCallback((log: WorkoutLog) => {
+    if (!activeProfileId) return;
+    const newLogs = [log, ...(workoutLogs[activeProfileId] || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setWorkoutLogs(prev => ({ ...prev, [activeProfileId]: newLogs }));
+    setIsHistoryDrawerOpen(true);
+  }, [activeProfileId, workoutLogs]);
 
   const handleImportLogs = useCallback((importedLogs: WorkoutLog[]) => {
+    if (!activeProfileId) return;
     if (Array.isArray(importedLogs) && (importedLogs.length === 0 || (importedLogs[0].id && importedLogs[0].date))) {
       const sortedLogs = importedLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setWorkoutLogs(sortedLogs);
-      alert(`${importedLogs.length} workout logs imported successfully!`);
+      setWorkoutLogs(prev => ({...prev, [activeProfileId]: sortedLogs}));
+      alert(`${importedLogs.length} workout logs imported successfully for ${activeProfile?.name}!`);
       setIsHistoryDrawerOpen(true);
     } else {
       alert('Import failed. The selected file is not valid workout log data.');
     }
-  }, []);
+  }, [activeProfileId, activeProfile?.name]);
 
+  const handleExportLogs = useCallback(() => {
+    if (!activeProfileId || !activeProfile || activeLogs.length === 0) {
+        alert("No data to export for the current profile.");
+        return;
+    }
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(activeLogs, null, 2))}`;
+    const link = document.createElement("a");
+    link.href = jsonString;
+    const profileName = activeProfile.name.replace(/\s/g, '_');
+    link.download = `gym-logs-${profileName}-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    link.remove();
+  }, [activeProfileId, activeProfile, activeLogs]);
+
+  const addProfile = (name: string) => {
+    const newProfile: Profile = { id: Date.now().toString(), name };
+    setProfiles(p => [...p, newProfile]);
+    setActiveProfileId(newProfile.id);
+  };
+
+  const switchProfile = (id: string) => {
+    setActiveProfileId(id);
+  }
+
+  const addRoutine = (routine: Omit<CustomRoutine, 'id'>) => {
+    if(!activeProfileId) return;
+    const newRoutine = { ...routine, id: Date.now().toString() };
+    const newRoutines = [...(customRoutines[activeProfileId] || []), newRoutine];
+    setCustomRoutines(prev => ({...prev, [activeProfileId]: newRoutines}));
+    return newRoutine;
+  };
+
+  if (!isAppReady) {
+    return <div className="min-h-screen bg-background-dark flex items-center justify-center"><p>Loading...</p></div>
+  }
+
+  if (!activeProfileId || !activeProfile) {
+    return <ProfileManager profiles={profiles} onAddProfile={addProfile} onSelectProfile={switchProfile} />;
+  }
 
   return (
     <div className="min-h-screen bg-background-dark font-sans">
@@ -55,13 +116,19 @@ const App: React.FC = () => {
           <div className="flex items-center space-x-3">
              <div className="bg-brand-primary p-2 rounded-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M5 13a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" />
-                    <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v1.333a1 1 0 00.707.943l2 1A1 1 0 0013 7.667V6a1 1 0 00-1-1h-2zm-2 4.667V11a1 1 0 001 1h2a1 1 0 001-1V7.667a1 1 0 00-.293-.707l-2-2A1 1 0 009.414 5H8a1 1 0 00-1 1v1.667zM3 10a1 1 0 011-1h2a1 1 0 110 2H4a1 1 0 01-1-1zm13 0a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clipRule="evenodd" />
+                    <path d="M5 13a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" /><path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v1.333a1 1 0 00.707.943l2 1A1 1 0 0013 7.667V6a1 1 0 00-1-1h-2zm-2 4.667V11a1 1 0 001 1h2a1 1 0 001-1V7.667a1 1 0 00-.293-.707l-2-2A1 1 0 009.414 5H8a1 1 0 00-1 1v1.667zM3 10a1 1 0 011-1h2a1 1 0 110 2H4a1 1 0 01-1-1zm13 0a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clipRule="evenodd" />
                 </svg>
             </div>
-            <h1 className="text-xl font-bold text-text-primary tracking-wider">Gym Logger</h1>
+            <h1 className="text-xl font-bold text-text-primary tracking-wider">{activeProfile.name}'s Log</h1>
           </div>
-          <div>
+          <div className="flex items-center gap-4">
+            <button
+                onClick={() => setActiveProfileId(null)}
+                className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+                aria-label="Switch profile"
+            >
+                Switch Profile
+            </button>
             <button
               onClick={() => setIsHistoryDrawerOpen(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-all duration-300 transform hover:scale-105 shadow-md"
@@ -74,13 +141,18 @@ const App: React.FC = () => {
         </nav>
       </header>
       <main className="container mx-auto p-4 md:p-6">
-        <WorkoutLogger onSave={addWorkoutLog} />
+        <WorkoutLogger 
+            onSave={addWorkoutLog} 
+            routines={activeRoutines}
+            onAddRoutine={addRoutine}
+        />
       </main>
       <HistoryDrawer
         isOpen={isHistoryDrawerOpen}
         onClose={() => setIsHistoryDrawerOpen(false)}
-        logs={workoutLogs}
+        logs={activeLogs}
         onImportLogs={handleImportLogs}
+        onExportLogs={handleExportLogs}
       />
     </div>
   );
