@@ -117,6 +117,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         onClose={() => setIsRoutineEditorOpen(false)}
         onSave={handleRoutineSave}
         logs={logs}
+        routines={routines}
       />
     </>
   );

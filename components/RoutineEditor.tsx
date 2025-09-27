@@ -7,6 +7,7 @@ interface RoutineEditorProps {
   onClose: () => void;
   onSave: (routine: Omit<CustomRoutine, 'id'>) => void;
   logs: WorkoutLog[];
+  routines: CustomRoutine[];
 }
 
 const PlusIcon = () => (
@@ -15,9 +16,10 @@ const PlusIcon = () => (
     </svg>
 );
 
-const generateSuggestions = (firstExercise: string, logs: WorkoutLog[]): string[] => {
+const generateSuggestions = (firstExercise: string, logs: WorkoutLog[], routines: CustomRoutine[]): string[] => {
     const coOccurrenceCount: Record<string, number> = {};
 
+    // 1. Analyze workout logs
     const relevantLogs = logs.filter(log => 
         log.exercises.some(ex => ex.name === firstExercise)
     );
@@ -30,29 +32,64 @@ const generateSuggestions = (firstExercise: string, logs: WorkoutLog[]): string[
         }
     }
 
+    // 2. Analyze existing routines
+    const relevantRoutines = routines.filter(routine =>
+        routine.exercises.includes(firstExercise)
+    );
+
+    for (const routine of relevantRoutines) {
+        for (const exercise of routine.exercises) {
+            if (exercise !== firstExercise) {
+                // Give a higher weight to routines to make them appear more prominently
+                coOccurrenceCount[exercise] = (coOccurrenceCount[exercise] || 0) + 2; 
+            }
+        }
+    }
+
     const sortedSuggestions = Object.entries(coOccurrenceCount)
         .sort((a, b) => b[1] - a[1])
         .map(entry => entry[0]);
+    
+    const uniqueSuggestions = [...new Set(sortedSuggestions)];
 
-    return sortedSuggestions.slice(0, 8); // Return top 8 suggestions
+    return uniqueSuggestions.slice(0, 8); // Return top 8 suggestions
 };
 
 
-const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, logs }) => {
+const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, logs, routines }) => {
   const [routineName, setRoutineName] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionAnchor, setSuggestionAnchor] = useState<string | null>(null);
 
   useEffect(() => {
-    if (selectedExercises.size === 1) {
-        const firstExercise = Array.from(selectedExercises)[0];
-        const newSuggestions = generateSuggestions(firstExercise, logs);
+    const exercises = Array.from(selectedExercises);
+    const currentAnchor = suggestionAnchor;
+
+    // Case 1: First exercise is selected. Set it as the anchor.
+    if (exercises.length > 0 && !currentAnchor) {
+      const newAnchor = exercises[0];
+      setSuggestionAnchor(newAnchor);
+      const newSuggestions = generateSuggestions(newAnchor, logs, routines);
+      setSuggestions(newSuggestions);
+    } 
+    // Case 2: Anchor was removed from selection.
+    else if (currentAnchor && !selectedExercises.has(currentAnchor)) {
+      // If other exercises remain, pick a new anchor.
+      if (exercises.length > 0) {
+        const newAnchor = exercises[0];
+        setSuggestionAnchor(newAnchor);
+        const newSuggestions = generateSuggestions(newAnchor, logs, routines);
         setSuggestions(newSuggestions);
-    } else {
+      } else {
+        // No exercises left, clear everything.
+        setSuggestionAnchor(null);
         setSuggestions([]);
+      }
     }
-  }, [selectedExercises, logs]);
+  }, [selectedExercises, logs, routines, suggestionAnchor]);
+
 
   const unselectedSuggestions = useMemo(() => {
     return suggestions.filter(suggestion => !selectedExercises.has(suggestion));
@@ -74,19 +111,29 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
     setSelectedExercises(prevSelected => new Set([...prevSelected, ...unselectedSuggestions]));
   };
 
+  const resetState = () => {
+    setRoutineName('');
+    setSelectedExercises(new Set());
+    setSearchTerm('');
+    setSuggestionAnchor(null);
+    setSuggestions([]);
+  };
+
   const handleSave = () => {
     if (routineName.trim() && selectedExercises.size > 0) {
       onSave({
         name: routineName.trim(),
         exercises: Array.from(selectedExercises)
       });
-      // Reset state for next time
-      setRoutineName('');
-      setSelectedExercises(new Set());
-      setSearchTerm('');
+      resetState();
     } else {
         alert("Please provide a routine name and select at least one exercise.");
     }
+  };
+  
+  const handleClose = () => {
+    resetState();
+    onClose();
   };
 
   const filteredExercises = useMemo(() => {
@@ -111,7 +158,7 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
   return (
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center p-4"
-      onClick={onClose}
+      onClick={handleClose}
       role="dialog"
       aria-modal="true"
     >
@@ -147,12 +194,12 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
             />
           </div>
 
-          {unselectedSuggestions.length > 0 && (
+          {suggestionAnchor && unselectedSuggestions.length > 0 && (
             <div className="border-t border-border-color pt-4 animate-fade-in">
                 <div className="flex justify-between items-center mb-3">
                     <div>
                         <h3 className="text-md font-semibold text-brand-light">Smart Suggestions</h3>
-                        <p className="text-xs text-text-secondary mt-1">Based on your history with <span className="font-bold text-text-primary">'{Array.from(selectedExercises)[0]}'</span>.</p>
+                        <p className="text-xs text-text-secondary mt-1">Based on your history with <span className="font-bold text-text-primary">'{suggestionAnchor}'</span>.</p>
                     </div>
                     {unselectedSuggestions.length > 0 && (
                          <button
@@ -200,7 +247,7 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
         </main>
         
         <footer className="p-4 border-t border-border-color flex justify-end gap-3 flex-shrink-0">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-colors">
+          <button onClick={handleClose} className="px-4 py-2 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-colors">
             Cancel
           </button>
           <button
