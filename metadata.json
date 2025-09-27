@@ -1,0 +1,5 @@
+{
+  "name": "Gym Weight Logger",
+  "description": "An application to log your weights from your gym training sessions. Track your progress for different workout days and exercises over time.",
+  "requestFramePermissions": []
+}
