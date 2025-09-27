@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { WorkoutLog } from '../types';
 
@@ -31,7 +30,27 @@ const NoDataIcon = () => (
 const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose }) => {
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string>('all');
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Automatically expand the first (most recent) log when the component loads
+    if (logs.length > 0) {
+      setExpandedLogs(new Set([logs[0].id]));
+    }
+  }, [logs]);
+
+  const toggleLogExpansion = (logId: string) => {
+    setExpandedLogs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(logId)) {
+        newSet.delete(logId);
+      } else {
+        newSet.add(logId);
+      }
+      return newSet;
+    });
+  };
 
   const uniqueExercises = useMemo(() => {
     const exerciseSet = new Set<string>();
@@ -205,41 +224,60 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
             </div>
           </div>
-          <div className="space-y-6">
-            {filteredLogs.map(log => (
-              <div key={log.id} className="bg-card-dark/50 p-5 rounded-xl shadow-lg border border-border-color/50 transform transition-all hover:shadow-brand-primary/20 hover:border-brand-primary/50 hover:scale-[1.02]">
-                <div className="flex justify-between items-start mb-4 pb-3 border-b border-border-color/50">
+          <div className="space-y-4">
+            {filteredLogs.map(log => {
+              const isExpanded = expandedLogs.has(log.id);
+              return (
+              <div key={log.id} className="bg-card-dark/50 rounded-xl shadow-lg border border-border-color/50 overflow-hidden transition-all duration-300">
+                <div 
+                  onClick={() => toggleLogExpansion(log.id)}
+                  className="flex justify-between items-center p-5 cursor-pointer hover:bg-background-dark/40"
+                  aria-expanded={isExpanded}
+                  aria-controls={`log-content-${log.id}`}
+                  >
                   <div>
                       <h3 className="font-bold text-xl text-brand-light">{log.routineName}</h3>
                       <span className="text-sm text-text-secondary">{new Date(log.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                   </div>
-                  <div className="text-xs font-mono bg-background-dark text-text-secondary px-2 py-1 rounded-full">
-                    {log.exercises.length} {log.exercises.length === 1 ? 'Exercise' : 'Exercises'}
+                  <div className="flex items-center gap-4">
+                    <div className="hidden sm:block text-xs font-mono bg-background-dark text-text-secondary px-2 py-1 rounded-full">
+                      {log.exercises.length} {log.exercises.length === 1 ? 'Exercise' : 'Exercises'}
+                    </div>
+                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-text-secondary transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  {log.exercises.map((exercise, index) => (
-                    <div key={index} className="bg-background-dark/50 p-3 rounded-md">
-                      <p className="font-semibold text-text-primary mb-2">{exercise.name}</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm">
-                        {exercise.sets.map((set, setIndex) => (
-                           <div key={setIndex} className="flex items-baseline gap-2 bg-background-light p-2 rounded-md">
-                              <span className="font-mono text-xs text-text-secondary font-bold">SET {setIndex+1}</span>
-                              <div className="flex-grow text-right">
-                                  <span className="font-semibold text-text-primary">{set.weight}</span>
-                                  <span className="text-xs text-text-secondary ml-1">kg</span>
-                                  <span className="text-text-secondary mx-1">x</span>
-                                  <span className="font-semibold text-text-primary">{set.reps}</span>
-                                  <span className="text-xs text-text-secondary ml-1">reps</span>
+                <div 
+                    id={`log-content-${log.id}`}
+                    className={`grid transition-all duration-500 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+                >
+                    <div className="overflow-hidden">
+                        <div className="p-5 pt-0 space-y-4 border-t border-border-color/30">
+                          {log.exercises.map((exercise, index) => (
+                            <div key={index} className="bg-background-dark/50 p-3 rounded-md">
+                              <p className="font-semibold text-text-primary mb-2">{exercise.name}</p>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm">
+                                {exercise.sets.map((set, setIndex) => (
+                                  <div key={setIndex} className="flex items-baseline gap-2 bg-background-light p-2 rounded-md">
+                                      <span className="font-mono text-xs text-text-secondary font-bold">SET {setIndex+1}</span>
+                                      <div className="flex-grow text-right">
+                                          <span className="font-semibold text-text-primary">{set.weight}</span>
+                                          <span className="text-xs text-text-secondary ml-1">kg</span>
+                                          <span className="text-text-secondary mx-1">x</span>
+                                          <span className="font-semibold text-text-primary">{set.reps}</span>
+                                          <span className="text-xs text-text-secondary ml-1">reps</span>
+                                      </div>
+                                  </div>
+                                ))}
                               </div>
-                           </div>
-                        ))}
-                      </div>
+                            </div>
+                          ))}
+                        </div>
                     </div>
-                  ))}
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </div>
