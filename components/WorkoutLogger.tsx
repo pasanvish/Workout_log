@@ -4,6 +4,7 @@ import ExerciseLogger from './ExerciseLogger';
 import RoutineEditor from './RoutineEditor';
 import WorkoutFeedbackModal from './WorkoutFeedbackModal';
 import ExercisePickerModal from './ExercisePickerModal';
+import ExerciseInstructionModal from './ExerciseInstructionModal';
 
 interface WorkoutLoggerProps {
   onSave: (log: WorkoutLog) => void;
@@ -20,6 +21,13 @@ const PlusIcon = () => (
     </svg>
 );
 
+const InfoIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+    </svg>
+);
+
+
 const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs, customExercises, onAddCustomExercise }) => {
   const [selectedRoutine, setSelectedRoutine] = useState<CustomRoutine | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -27,6 +35,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [pendingLog, setPendingLog] = useState<Omit<WorkoutLog, 'effort'> | null>(null);
   const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false);
+  const [instructionModalState, setInstructionModalState] = useState<{isOpen: boolean, exerciseName: string | null}>({isOpen: false, exerciseName: null});
 
   const handleRoutineSelect = (routine: CustomRoutine) => {
     setSelectedRoutine(routine);
@@ -80,6 +89,10 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
     setIsExercisePickerOpen(false);
   };
 
+  const handleShowInstructions = (exerciseName: string) => {
+    setInstructionModalState({isOpen: true, exerciseName});
+  };
+
   return (
     <>
       <div className="bg-background-light p-6 rounded-lg shadow-xl space-y-8 max-w-4xl mx-auto">
@@ -112,16 +125,28 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
           </div>
         </div>
         
-        {selectedRoutine && (
+        {selectedRoutine ? (
           <div>
             <h3 className="text-lg font-semibold text-text-primary mb-3">2. Log Your Sets for <span className="text-brand-light">{selectedRoutine.name}</span></h3>
             <div className="space-y-4">
               {exercises.map(exercise => (
-                <ExerciseLogger 
-                  key={exercise.name}
-                  exercise={exercise}
-                  onSetChange={handleSetChange}
-                />
+                 <div key={exercise.name} className="bg-card-dark p-4 rounded-lg border border-border-color">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-md font-semibold text-brand-light">{exercise.name}</h4>
+                        <button 
+                          onClick={() => handleShowInstructions(exercise.name)} 
+                          className="text-text-secondary hover:text-brand-light transition-colors"
+                          aria-label={`Get instructions for ${exercise.name}`}
+                          title="Get instructions"
+                        >
+                            <InfoIcon />
+                        </button>
+                    </div>
+                    <ExerciseLogger 
+                      exercise={exercise}
+                      onSetChange={handleSetChange}
+                    />
+                </div>
               ))}
                <button
                   onClick={() => setIsExercisePickerOpen(true)}
@@ -132,6 +157,10 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
                 </button>
             </div>
           </div>
+        ) : (
+             <div className="text-center p-8 border-2 border-dashed border-border-color rounded-lg">
+                <p className="text-text-secondary">Select a routine above to start logging your sets.</p>
+            </div>
         )}
 
         {selectedRoutine && (
@@ -167,6 +196,11 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         customExercises={customExercises}
         onAddCustomExercise={onAddCustomExercise}
         currentExercises={exercises}
+      />
+      <ExerciseInstructionModal
+        isOpen={instructionModalState.isOpen}
+        onClose={() => setInstructionModalState({isOpen: false, exerciseName: null})}
+        exerciseName={instructionModalState.exerciseName}
       />
     </>
   );

@@ -37,6 +37,22 @@ export interface WorkoutLog {
     effort?: number; // 1 (easy) to 5 (max effort)
 }
 
+export interface BodyMeasurementLog {
+  id: string;
+  date: string;
+  weight?: string;
+  bodyFat?: string;
+  neck?: string;
+  shoulders?: string;
+  chest?: string;
+  biceps?: string;
+  waist?: string;
+  hips?: string;
+  thighs?: string;
+  calves?: string;
+}
+
+
 export interface Badge {
   id: string;
   name: string;

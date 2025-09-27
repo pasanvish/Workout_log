@@ -42,8 +42,7 @@ const ExerciseLogger: React.FC<ExerciseLoggerProps> = ({ exercise, onSetChange }
   };
 
   return (
-    <div className="bg-card-dark p-4 rounded-lg border border-border-color">
-      <h4 className="text-md font-semibold text-brand-light mb-4">{exercise.name}</h4>
+    <div>
       <div className="space-y-3">
         {exercise.sets.map((set, index) => (
           <div key={set.id} className="flex items-center gap-4">

@@ -45,6 +45,17 @@ const MedalIcon = () => (
   </svg>
 );
 
+const InfoTooltip: React.FC<{text: string}> = ({ text }) => (
+    <div className="relative flex items-center group">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-secondary" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+        </svg>
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-60 p-2 bg-card-dark text-text-primary text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+            {text}
+        </div>
+    </div>
+);
+
 
 const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords }) => {
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
@@ -314,7 +325,10 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
         </div>
 
         <div>
-          <h3 className="text-2xl font-bold text-center text-text-primary mt-8 mb-6">Personal Records</h3>
+            <div className="flex justify-center items-center gap-2 mt-8 mb-6">
+                <h3 className="text-2xl font-bold text-text-primary">Personal Records</h3>
+                <InfoTooltip text="Personal Records (PRs) are automatically calculated when you log a new set with a heavier weight for a specific number of reps." />
+            </div>
           {prExercises.length > 0 ? (
             <div className="space-y-4">
               {prExercises.map(exerciseName => (

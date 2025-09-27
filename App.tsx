@@ -3,7 +3,8 @@ import WorkoutLogger from './components/WorkoutLogger';
 import HistoryDrawer from './components/HistoryDrawer';
 import ProfileManager from './components/ProfileManager';
 import PRNotificationModal from './components/PRNotificationModal';
-import { WorkoutLog, Profile, CustomRoutine, CustomExercise, AllPRs } from './types';
+import { WorkoutLog, Profile, CustomRoutine, CustomExercise, AllPRs, BodyMeasurementLog } from './types';
+import BodyMeasurements from './components/BodyMeasurements';
 
 const App: React.FC = () => {
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
@@ -15,8 +16,11 @@ const App: React.FC = () => {
   const [customRoutines, setCustomRoutines] = useState<Record<string, CustomRoutine[]>>({});
   const [customExercises, setCustomExercises] = useState<Record<string, CustomExercise[]>>({});
   const [personalRecords, setPersonalRecords] = useState<AllPRs>({});
+  const [bodyMeasurements, setBodyMeasurements] = useState<Record<string, BodyMeasurementLog[]>>({});
+  
   const [newlySetPRs, setNewlySetPRs] = useState<Array<{exerciseName: string; weight: string; reps: string}>>([]);
   const [isAppReady, setIsAppReady] = useState(false);
+  const [activeTab, setActiveTab] = useState<'logger' | 'measurements'>('logger');
 
 
   useEffect(() => {
@@ -27,6 +31,7 @@ const App: React.FC = () => {
       const savedCustomRoutines = JSON.parse(localStorage.getItem('customRoutines') || '{}');
       const savedCustomExercises = JSON.parse(localStorage.getItem('customExercises') || '{}');
       const savedPersonalRecords = JSON.parse(localStorage.getItem('personalRecords') || '{}');
+      const savedBodyMeasurements = JSON.parse(localStorage.getItem('bodyMeasurements') || '{}');
 
       setProfiles(savedProfiles);
       setActiveProfileId(savedActiveProfileId);
@@ -34,6 +39,7 @@ const App: React.FC = () => {
       setCustomRoutines(savedCustomRoutines);
       setCustomExercises(savedCustomExercises);
       setPersonalRecords(savedPersonalRecords);
+      setBodyMeasurements(savedBodyMeasurements);
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
     } finally {
@@ -50,16 +56,18 @@ const App: React.FC = () => {
       localStorage.setItem('customRoutines', JSON.stringify(customRoutines));
       localStorage.setItem('customExercises', JSON.stringify(customExercises));
       localStorage.setItem('personalRecords', JSON.stringify(personalRecords));
+      localStorage.setItem('bodyMeasurements', JSON.stringify(bodyMeasurements));
     } catch (error) {
       console.error("Failed to save data to localStorage", error);
     }
-  }, [profiles, activeProfileId, workoutLogs, customRoutines, customExercises, personalRecords, isAppReady]);
+  }, [profiles, activeProfileId, workoutLogs, customRoutines, customExercises, personalRecords, bodyMeasurements, isAppReady]);
 
   const activeProfile = useMemo(() => profiles.find(p => p.id === activeProfileId), [profiles, activeProfileId]);
   const activeLogs = useMemo(() => (activeProfileId && workoutLogs[activeProfileId]) || [], [workoutLogs, activeProfileId]);
   const activeRoutines = useMemo(() => (activeProfileId && customRoutines[activeProfileId]) || [], [customRoutines, activeProfileId]);
   const activeCustomExercises = useMemo(() => (activeProfileId && customExercises[activeProfileId]) || [], [customExercises, activeProfileId]);
   const activePRs = useMemo(() => (activeProfileId && personalRecords[activeProfileId]) || {}, [personalRecords, activeProfileId]);
+  const activeBodyMeasurements = useMemo(() => (activeProfileId && bodyMeasurements[activeProfileId]) || [], [bodyMeasurements, activeProfileId]);
   
   const addWorkoutLog = useCallback((log: WorkoutLog) => {
     if (!activeProfileId) return;
@@ -107,6 +115,13 @@ const App: React.FC = () => {
 
     setIsHistoryDrawerOpen(true);
   }, [activeProfileId, workoutLogs, personalRecords]);
+
+  const addBodyMeasurement = useCallback((log: Omit<BodyMeasurementLog, 'id'>) => {
+    if (!activeProfileId) return;
+    const newLog = { ...log, id: new Date().toISOString() };
+    const newLogs = [newLog, ...(bodyMeasurements[activeProfileId] || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setBodyMeasurements(prev => ({ ...prev, [activeProfileId]: newLogs }));
+  }, [activeProfileId, bodyMeasurements]);
 
   const handleImportLogs = useCallback((importedLogs: WorkoutLog[]) => {
     if (!activeProfileId) return;
@@ -200,14 +215,40 @@ const App: React.FC = () => {
         </nav>
       </header>
       <main className="container mx-auto p-4 md:p-6">
-        <WorkoutLogger 
-            onSave={addWorkoutLog} 
-            routines={activeRoutines}
-            onAddRoutine={addRoutine}
-            logs={activeLogs}
-            customExercises={activeCustomExercises}
-            onAddCustomExercise={addCustomExercise}
-        />
+        <div className="max-w-4xl mx-auto mb-6">
+            <div className="flex border-b border-border-color">
+            <button
+                onClick={() => setActiveTab('logger')}
+                className={`px-6 py-3 text-sm font-bold tracking-wider uppercase transition-colors w-1/2 ${activeTab === 'logger' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-text-secondary hover:text-text-primary'}`}
+            >
+                Workouts
+            </button>
+            <button
+                onClick={() => setActiveTab('measurements')}
+                className={`px-6 py-3 text-sm font-bold tracking-wider uppercase transition-colors w-1/2 ${activeTab === 'measurements' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-text-secondary hover:text-text-primary'}`}
+            >
+                Measurements
+            </button>
+            </div>
+        </div>
+        <div key={activeTab} className="animate-fade-in-up">
+            {activeTab === 'logger' && (
+                <WorkoutLogger 
+                    onSave={addWorkoutLog} 
+                    routines={activeRoutines}
+                    onAddRoutine={addRoutine}
+                    logs={activeLogs}
+                    customExercises={activeCustomExercises}
+                    onAddCustomExercise={addCustomExercise}
+                />
+            )}
+            {activeTab === 'measurements' && (
+                <BodyMeasurements 
+                    logs={activeBodyMeasurements}
+                    onSave={addBodyMeasurement}
+                />
+            )}
+        </div>
       </main>
       <HistoryDrawer
         isOpen={isHistoryDrawerOpen}
