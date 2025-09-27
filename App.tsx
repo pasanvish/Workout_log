@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import WorkoutLogger from './components/WorkoutLogger';
 import HistoryDrawer from './components/HistoryDrawer';
 import ProfileManager from './components/ProfileManager';
-import { WorkoutLog, Profile, CustomRoutine, CustomExercise } from './types';
+import PRNotificationModal from './components/PRNotificationModal';
+import { WorkoutLog, Profile, CustomRoutine, CustomExercise, AllPRs } from './types';
 
 const App: React.FC = () => {
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
@@ -13,6 +14,8 @@ const App: React.FC = () => {
   const [workoutLogs, setWorkoutLogs] = useState<Record<string, WorkoutLog[]>>({});
   const [customRoutines, setCustomRoutines] = useState<Record<string, CustomRoutine[]>>({});
   const [customExercises, setCustomExercises] = useState<Record<string, CustomExercise[]>>({});
+  const [personalRecords, setPersonalRecords] = useState<AllPRs>({});
+  const [newlySetPRs, setNewlySetPRs] = useState<Array<{exerciseName: string; weight: string; reps: string}>>([]);
   const [isAppReady, setIsAppReady] = useState(false);
 
 
@@ -23,12 +26,14 @@ const App: React.FC = () => {
       const savedWorkoutLogs = JSON.parse(localStorage.getItem('workoutLogs') || '{}');
       const savedCustomRoutines = JSON.parse(localStorage.getItem('customRoutines') || '{}');
       const savedCustomExercises = JSON.parse(localStorage.getItem('customExercises') || '{}');
+      const savedPersonalRecords = JSON.parse(localStorage.getItem('personalRecords') || '{}');
 
       setProfiles(savedProfiles);
       setActiveProfileId(savedActiveProfileId);
       setWorkoutLogs(savedWorkoutLogs);
       setCustomRoutines(savedCustomRoutines);
       setCustomExercises(savedCustomExercises);
+      setPersonalRecords(savedPersonalRecords);
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
     } finally {
@@ -44,29 +49,71 @@ const App: React.FC = () => {
       localStorage.setItem('workoutLogs', JSON.stringify(workoutLogs));
       localStorage.setItem('customRoutines', JSON.stringify(customRoutines));
       localStorage.setItem('customExercises', JSON.stringify(customExercises));
+      localStorage.setItem('personalRecords', JSON.stringify(personalRecords));
     } catch (error) {
       console.error("Failed to save data to localStorage", error);
     }
-  }, [profiles, activeProfileId, workoutLogs, customRoutines, customExercises, isAppReady]);
+  }, [profiles, activeProfileId, workoutLogs, customRoutines, customExercises, personalRecords, isAppReady]);
 
   const activeProfile = useMemo(() => profiles.find(p => p.id === activeProfileId), [profiles, activeProfileId]);
   const activeLogs = useMemo(() => (activeProfileId && workoutLogs[activeProfileId]) || [], [workoutLogs, activeProfileId]);
   const activeRoutines = useMemo(() => (activeProfileId && customRoutines[activeProfileId]) || [], [customRoutines, activeProfileId]);
   const activeCustomExercises = useMemo(() => (activeProfileId && customExercises[activeProfileId]) || [], [customExercises, activeProfileId]);
+  const activePRs = useMemo(() => (activeProfileId && personalRecords[activeProfileId]) || {}, [personalRecords, activeProfileId]);
   
   const addWorkoutLog = useCallback((log: WorkoutLog) => {
     if (!activeProfileId) return;
-    const newLogs = [log, ...(workoutLogs[activeProfileId] || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const currentPRs = personalRecords[activeProfileId] || {};
+    const updatedPRs = JSON.parse(JSON.stringify(currentPRs)); // Deep copy
+    const newPRsThisSession: Array<{ exerciseName: string; weight: string; reps: string }> = [];
+    let prsUpdated = false;
+
+    const logWithPRs: WorkoutLog = {
+      ...log,
+      exercises: log.exercises.map(ex => ({
+        ...ex,
+        sets: ex.sets.map(set => {
+          const weight = parseFloat(set.weight);
+          const reps = parseInt(set.reps, 10);
+
+          if (!isNaN(weight) && !isNaN(reps) && weight > 0 && reps > 0) {
+            const existingPRWeight = updatedPRs[ex.name]?.[reps]?.weight || 0;
+            if (weight > existingPRWeight) {
+              if (!updatedPRs[ex.name]) {
+                updatedPRs[ex.name] = {};
+              }
+              updatedPRs[ex.name][reps] = { weight, date: log.date };
+              newPRsThisSession.push({ exerciseName: ex.name, ...set });
+              prsUpdated = true;
+              return { ...set, isPR: true };
+            }
+          }
+          return { ...set, isPR: false };
+        })
+      }))
+    };
+    
+    if (prsUpdated) {
+      setPersonalRecords(prev => ({ ...prev, [activeProfileId]: updatedPRs }));
+    }
+
+    const newLogs = [logWithPRs, ...(workoutLogs[activeProfileId] || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setWorkoutLogs(prev => ({ ...prev, [activeProfileId]: newLogs }));
+    
+    if (newPRsThisSession.length > 0) {
+      setNewlySetPRs(newPRsThisSession);
+    }
+
     setIsHistoryDrawerOpen(true);
-  }, [activeProfileId, workoutLogs]);
+  }, [activeProfileId, workoutLogs, personalRecords]);
 
   const handleImportLogs = useCallback((importedLogs: WorkoutLog[]) => {
     if (!activeProfileId) return;
     if (Array.isArray(importedLogs) && (importedLogs.length === 0 || (importedLogs[0].id && importedLogs[0].date))) {
       const sortedLogs = importedLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setWorkoutLogs(prev => ({...prev, [activeProfileId]: sortedLogs}));
-      alert(`${importedLogs.length} workout logs imported successfully for ${activeProfile?.name}!`);
+      alert(`${importedLogs.length} workout logs imported successfully for ${activeProfile?.name}! This will not recalculate PRs.`);
       setIsHistoryDrawerOpen(true);
     } else {
       alert('Import failed. The selected file is not valid workout log data.');
@@ -169,6 +216,12 @@ const App: React.FC = () => {
         onImportLogs={handleImportLogs}
         onExportLogs={handleExportLogs}
         activeProfile={activeProfile}
+        personalRecords={activePRs}
+      />
+      <PRNotificationModal
+        isOpen={newlySetPRs.length > 0}
+        onClose={() => setNewlySetPRs([])}
+        prs={newlySetPRs}
       />
     </div>
   );

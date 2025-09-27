@@ -21,6 +21,7 @@ export interface Set {
     id: string;
     weight: string;
     reps: string;
+    isPR?: boolean;
 }
 
 export interface Exercise {
@@ -43,3 +44,13 @@ export interface Badge {
   icon: React.FC<React.SVGProps<SVGSVGElement>>;
   isEarned: (logs: WorkoutLog[]) => boolean;
 }
+
+// Personal Record Types
+export interface PR {
+  weight: number;
+  date: string;
+}
+
+export type ExercisePRs = Record<string, PR>; // Key: reps as string
+export type ProfilePRs = Record<string, ExercisePRs>; // Key: exerciseName
+export type AllPRs = Record<string, ProfilePRs>; // Key: profileId

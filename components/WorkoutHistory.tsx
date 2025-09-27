@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { WorkoutLog, Profile } from '../types';
+import { WorkoutLog, Profile, ProfilePRs } from '../types';
 import BadgesDisplay from './BadgesDisplay';
 
 interface WorkoutHistoryProps {
@@ -9,6 +9,7 @@ interface WorkoutHistoryProps {
   onExportLogs: () => void;
   onClose: () => void;
   activeProfile: Profile | undefined;
+  personalRecords: ProfilePRs;
 }
 
 const EFFORT_LEVELS: Record<number, { emoji: string; label: string }> = {
@@ -37,7 +38,15 @@ const NoDataIcon = () => (
   </svg>
 );
 
-const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile }) => {
+const MedalIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+    <path d="M10 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 003 15v4a1 1 0 001 1h12a1 1 0 001-1v-4a1 1 0 00-.293-.707L16 11.586V8a6 6 0 00-6-6zM5 15h10v3H5v-3z" />
+    <path d="M10 5a1 1 0 011 1v1.586l.707.707a1 1 0 01-1.414 1.414L10 9.414l-.293.293a1 1 0 01-1.414-1.414L9 8.586V6a1 1 0 011-1z" />
+  </svg>
+);
+
+
+const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords }) => {
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string>('all');
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
@@ -81,6 +90,8 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
     if (selectedRoutineFilter === 'all') return logs;
     return logs.filter(log => log.routineName === selectedRoutineFilter);
   }, [logs, selectedRoutineFilter]);
+
+  const prExercises = useMemo(() => Object.keys(personalRecords).sort(), [personalRecords]);
 
   const chartData = useMemo(() => {
     if (!selectedExercise) return [];
@@ -161,7 +172,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                     <ul class="sets-list">
                         ${ex.sets.map((set, index) => `
                             <li class="set-item">
-                                <strong>Set ${index + 1}:</strong> ${set.weight} kg &times; ${set.reps} reps
+                                <strong>Set ${index + 1}:</strong> ${set.weight} kg &times; ${set.reps} reps ${set.isPR ? '<strong>(PR!)</strong>' : ''}
                             </li>
                         `).join('')}
                     </ul>
@@ -303,6 +314,35 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
         </div>
 
         <div>
+          <h3 className="text-2xl font-bold text-center text-text-primary mt-8 mb-6">Personal Records</h3>
+          {prExercises.length > 0 ? (
+            <div className="space-y-4">
+              {prExercises.map(exerciseName => (
+                <div key={exerciseName} className="bg-background-dark/50 p-4 rounded-xl">
+                  <h4 className="font-bold text-brand-light text-lg mb-3">{exerciseName}</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {Object.entries(personalRecords[exerciseName])
+                      .sort((a, b) => parseInt(a[0], 10) - parseInt(b[0], 10))
+                      .map(([reps, pr]) => (
+                        <div key={reps} className="bg-card-dark p-3 rounded-lg text-center">
+                          <p className="text-sm text-text-secondary">{reps} Rep Max</p>
+                          <p className="font-bold text-xl text-text-primary mt-1">{pr.weight} kg</p>
+                          <p className="text-xs text-text-secondary mt-1">{new Date(pr.date).toLocaleDateString()}</p>
+                        </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-text-secondary p-4 bg-background-dark/50 rounded-md">
+              <p>No Personal Records set yet. Keep lifting!</p>
+            </div>
+          )}
+        </div>
+
+
+        <div>
           <h3 className="text-2xl font-bold text-center text-text-primary mt-8 mb-2">Session Logs</h3>
            <div className="flex flex-col md:flex-row gap-4 items-center mb-6 bg-background-dark/50 p-4 rounded-xl">
             <select
@@ -375,14 +415,17 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                               <p className="font-semibold text-text-primary mb-2">{exercise.name}</p>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm">
                                 {exercise.sets.map((set, setIndex) => (
-                                  <div key={setIndex} className="flex items-baseline gap-2 bg-background-light p-2 rounded-md">
+                                  <div key={setIndex} className="flex items-center gap-2 bg-background-light p-2 rounded-md">
                                       <span className="font-mono text-xs text-text-secondary font-bold">SET {setIndex+1}</span>
-                                      <div className="flex-grow text-right">
-                                          <span className="font-semibold text-text-primary">{set.weight}</span>
-                                          <span className="text-xs text-text-secondary ml-1">kg</span>
-                                          <span className="text-text-secondary mx-1">x</span>
-                                          <span className="font-semibold text-text-primary">{set.reps}</span>
-                                          <span className="text-xs text-text-secondary ml-1">reps</span>
+                                      <div className="flex-grow text-right flex items-center justify-end gap-2">
+                                          <div>
+                                            <span className="font-semibold text-text-primary">{set.weight}</span>
+                                            <span className="text-xs text-text-secondary ml-1">kg</span>
+                                            <span className="text-text-secondary mx-1">x</span>
+                                            <span className="font-semibold text-text-primary">{set.reps}</span>
+                                            <span className="text-xs text-text-secondary ml-1">reps</span>
+                                          </div>
+                                          {set.isPR && <div title="New Personal Record!"><MedalIcon /></div>}
                                       </div>
                                   </div>
                                 ))}

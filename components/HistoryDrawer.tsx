@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import WorkoutHistory from './WorkoutHistory';
-import { WorkoutLog, Profile } from '../types';
+import { WorkoutLog, Profile, ProfilePRs } from '../types';
 
 interface HistoryDrawerProps {
   isOpen: boolean;
@@ -9,9 +9,10 @@ interface HistoryDrawerProps {
   onImportLogs: (logs: WorkoutLog[]) => void;
   onExportLogs: () => void;
   activeProfile: Profile | undefined;
+  personalRecords: ProfilePRs;
 }
 
-const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, onImportLogs, onExportLogs, activeProfile }) => {
+const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, onImportLogs, onExportLogs, activeProfile, personalRecords }) => {
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +62,7 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, on
         aria-labelledby="history-drawer-title"
       >
         <div className="h-full flex flex-col">
-            <WorkoutHistory logs={logs} onImportLogs={onImportLogs} onExportLogs={onExportLogs} onClose={onClose} activeProfile={activeProfile} />
+            <WorkoutHistory logs={logs} onImportLogs={onImportLogs} onExportLogs={onExportLogs} onClose={onClose} activeProfile={activeProfile} personalRecords={personalRecords} />
         </div>
       </div>
     </>
