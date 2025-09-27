@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { WorkoutLog } from '../types';
+import { WorkoutLog, Profile } from '../types';
+import BadgesDisplay from './BadgesDisplay';
 
 interface WorkoutHistoryProps {
   logs: WorkoutLog[];
   onImportLogs: (logs: WorkoutLog[]) => void;
   onExportLogs: () => void;
   onClose: () => void;
+  activeProfile: Profile | undefined;
 }
 
 const DownloadIcon = () => (
@@ -27,10 +29,11 @@ const NoDataIcon = () => (
   </svg>
 );
 
-const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose }) => {
+const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile }) => {
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string>('all');
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  const [isBadgesExpanded, setIsBadgesExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -113,6 +116,76 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
       };
       reader.readAsText(file);
       event.target.value = '';
+  };
+  
+  const handleExportDoc = () => {
+    if (!activeProfile || logs.length === 0) {
+        alert("No data to export.");
+        return;
+    }
+
+    const styles = `
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            h1, h2, h3 { color: #0f766e; }
+            h1 { font-size: 24px; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px; }
+            .workout-session { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; page-break-inside: avoid; }
+            .session-header h2 { font-size: 20px; margin: 0; }
+            .session-header p { font-size: 14px; color: #666; margin: 0; }
+            .exercise { margin-top: 15px; }
+            .exercise h3 { font-size: 16px; margin-bottom: 5px; }
+            .sets-list { list-style: none; padding-left: 0; }
+            .set-item { display: inline-block; background: #f4f4f4; border-radius: 4px; padding: 5px 10px; margin-right: 5px; margin-bottom: 5px; font-family: monospace; }
+        </style>
+    `;
+
+    const logHtml = logs.map(log => `
+        <div class="workout-session">
+            <div class="session-header">
+                <h2>${log.routineName}</h2>
+                <p>${new Date(log.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+            ${log.exercises.map(ex => `
+                <div class="exercise">
+                    <h3>${ex.name}</h3>
+                    <ul class="sets-list">
+                        ${ex.sets.map((set, index) => `
+                            <li class="set-item">
+                                <strong>Set ${index + 1}:</strong> ${set.weight} kg &times; ${set.reps} reps
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `).join('')}
+        </div>
+    `).join('');
+
+    const fullHtml = `
+        <!DOCTYPE html>
+        <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>Workout History - ${activeProfile.name}</title>
+                ${styles}
+            </head>
+            <body>
+                <h1>Workout History for ${activeProfile.name}</h1>
+                <p>Generated on ${new Date().toLocaleDateString()}</p>
+                ${logHtml}
+            </body>
+        </html>
+    `;
+
+    const blob = new Blob([fullHtml], { type: 'application/msword' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    const profileName = activeProfile.name.replace(/\s/g, '_');
+    link.download = `workout-history-${profileName}-${new Date().toISOString().split('T')[0]}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
   
   if (logs.length === 0) {
@@ -200,6 +273,26 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
         )}
 
         <div>
+            <div className="text-center mt-8">
+                <button 
+                onClick={() => setIsBadgesExpanded(!isBadgesExpanded)}
+                className="inline-flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-semibold bg-card-dark/70 hover:bg-gray-600 text-text-primary transition-all duration-300 transform hover:scale-105 shadow-md"
+                aria-expanded={isBadgesExpanded}
+                >
+                <span>View Achievements</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform duration-300 ${isBadgesExpanded ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                </button>
+            </div>
+            {isBadgesExpanded && (
+                <div className="mt-6 bg-background-dark/50 p-6 rounded-xl shadow-xl">
+                    <BadgesDisplay logs={logs} />
+                </div>
+            )}
+        </div>
+
+        <div>
           <h3 className="text-2xl font-bold text-center text-text-primary mt-8 mb-2">Session Logs</h3>
            <div className="flex flex-col md:flex-row gap-4 items-center mb-6 bg-background-dark/50 p-4 rounded-xl">
             <select
@@ -213,14 +306,23 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
               ))}
             </select>
             <div className="flex gap-2 ml-auto">
-                <button onClick={onExportLogs} className="flex items-center px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600 transition-colors">
-                    <DownloadIcon/>
-                    Export
-                </button>
                 <button onClick={handleImportClick} className="flex items-center px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600 transition-colors">
                     <UploadIcon/>
                     Import
                 </button>
+                 <div className="relative inline-block text-left group">
+                    <button className="flex items-center px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600 transition-colors h-full">
+                        <DownloadIcon/>
+                        Export
+                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-gray-600 ring-1 ring-black ring-opacity-5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 invisible group-hover:visible">
+                        <div className="py-1" role="menu" aria-orientation="vertical">
+                        <a href="#" onClick={(e) => { e.preventDefault(); onExportLogs(); }} className="block px-4 py-2 text-sm text-text-primary hover:bg-gray-700" role="menuitem">as JSON (.json)</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); handleExportDoc(); }} className="block px-4 py-2 text-sm text-text-primary hover:bg-gray-700" role="menuitem">as Document (.doc)</a>
+                        </div>
+                    </div>
+                </div>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
             </div>
           </div>

@@ -153,6 +153,7 @@ const App: React.FC = () => {
         logs={activeLogs}
         onImportLogs={handleImportLogs}
         onExportLogs={handleExportLogs}
+        activeProfile={activeProfile}
       />
     </div>
   );

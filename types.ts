@@ -1,3 +1,4 @@
+import React from 'react';
 
 export interface Profile {
   id: string;
@@ -26,4 +27,12 @@ export interface WorkoutLog {
     date: string;
     routineName: string;
     exercises: Exercise[];
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  isEarned: (logs: WorkoutLog[]) => boolean;
 }
