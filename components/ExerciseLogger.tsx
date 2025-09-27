@@ -54,7 +54,7 @@ const ExerciseLogger: React.FC<ExerciseLoggerProps> = ({ exercise, onSetChange }
                 placeholder="0"
                 value={set.weight}
                 onChange={(e) => handleInputChange(set.id, 'weight', e.target.value)}
-                className="w-full bg-background-light border border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary"
+                className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors duration-200"
                 aria-label={`Weight for set ${index + 1}`}
               />
               <span className="text-sm text-text-secondary">kg</span>
@@ -65,7 +65,7 @@ const ExerciseLogger: React.FC<ExerciseLoggerProps> = ({ exercise, onSetChange }
                 placeholder="0"
                 value={set.reps}
                 onChange={(e) => handleInputChange(set.id, 'reps', e.target.value)}
-                className="w-full bg-background-light border border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary"
+                className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors duration-200"
                  aria-label={`Reps for set ${index + 1}`}
               />
                <span className="text-sm text-text-secondary">reps</span>

@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import WorkoutLogger from './components/WorkoutLogger';
-import WorkoutHistory from './components/WorkoutHistory';
+import HistoryDrawer from './components/HistoryDrawer';
 import { WorkoutLog } from './types';
 
-type View = 'logger' | 'history';
-
 const App: React.FC = () => {
-  const [view, setView] = useState<View>('logger');
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
 
   useEffect(() => {
@@ -17,12 +15,10 @@ const App: React.FC = () => {
         if (Array.isArray(parsedLogs)) {
             const sortedLogs = parsedLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setWorkoutLogs(sortedLogs);
-            if (sortedLogs.length > 0) {
-              setView('history');
-            }
         }
       }
-    } catch (error) {
+    } catch (error)
+ {
       console.error("Failed to load workout logs from localStorage", error);
     }
   }, []);
@@ -37,7 +33,7 @@ const App: React.FC = () => {
 
   const addWorkoutLog = useCallback((log: WorkoutLog) => {
     setWorkoutLogs(prevLogs => [log, ...prevLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    setView('history');
+    setIsHistoryDrawerOpen(true);
   }, []);
 
   const handleImportLogs = useCallback((importedLogs: WorkoutLog[]) => {
@@ -45,7 +41,7 @@ const App: React.FC = () => {
       const sortedLogs = importedLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setWorkoutLogs(sortedLogs);
       alert(`${importedLogs.length} workout logs imported successfully!`);
-      setView('history');
+      setIsHistoryDrawerOpen(true);
     } else {
       alert('Import failed. The selected file is not valid workout log data.');
     }
@@ -54,7 +50,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background-dark font-sans">
-      <header className="bg-background-light sticky top-0 z-10 shadow-lg">
+      <header className="bg-background-light/80 backdrop-blur-sm sticky top-0 z-20 shadow-lg border-b border-border-color/50">
         <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-3">
              <div className="bg-brand-primary p-2 rounded-lg">
@@ -65,30 +61,27 @@ const App: React.FC = () => {
             </div>
             <h1 className="text-xl font-bold text-text-primary tracking-wider">Gym Logger</h1>
           </div>
-          <div className="flex space-x-1 bg-card-dark p-1 rounded-lg">
+          <div>
             <button
-              onClick={() => setView('logger')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
-                view === 'logger' ? 'bg-brand-primary text-white shadow' : 'text-text-secondary hover:bg-background-light'
-              }`}
+              onClick={() => setIsHistoryDrawerOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-all duration-300 transform hover:scale-105 shadow-md"
+              aria-label="View workout history"
             >
-              Log Workout
-            </button>
-            <button
-              onClick={() => setView('history')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
-                view === 'history' ? 'bg-brand-primary text-white shadow' : 'text-text-secondary hover:bg-background-light'
-              }`}
-            >
-              View History
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zM4 4a1 1 0 00-1 1v1a1 1 0 002 0V5a1 1 0 00-1-1zM16 4a1 1 0 00-1 1v1a1 1 0 002 0V5a1 1 0 00-1-1z" /><path fillRule="evenodd" d="M5.5 9.5A1.5 1.5 0 017 8h6a1.5 1.5 0 011.5 1.5v5A1.5 1.5 0 0113 16H7a1.5 1.5 0 01-1.5-1.5v-5zM7 9h6v5H7V9z" clipRule="evenodd" /></svg>
+              <span>History</span>
             </button>
           </div>
         </nav>
       </header>
       <main className="container mx-auto p-4 md:p-6">
-        {view === 'logger' && <WorkoutLogger onSave={addWorkoutLog} />}
-        {view === 'history' && <WorkoutHistory logs={workoutLogs} onImportLogs={handleImportLogs} />}
+        <WorkoutLogger onSave={addWorkoutLog} />
       </main>
+      <HistoryDrawer
+        isOpen={isHistoryDrawerOpen}
+        onClose={() => setIsHistoryDrawerOpen(false)}
+        logs={workoutLogs}
+        onImportLogs={handleImportLogs}
+      />
     </div>
   );
 };
