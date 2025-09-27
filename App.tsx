@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import WorkoutLogger from './components/WorkoutLogger';
 import HistoryDrawer from './components/HistoryDrawer';
@@ -145,6 +144,7 @@ const App: React.FC = () => {
             onSave={addWorkoutLog} 
             routines={activeRoutines}
             onAddRoutine={addRoutine}
+            logs={activeLogs}
         />
       </main>
       <HistoryDrawer

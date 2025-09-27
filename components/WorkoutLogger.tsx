@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Exercise, WorkoutLog, CustomRoutine } from '../types';
 import ExerciseLogger from './ExerciseLogger';
@@ -8,6 +7,7 @@ interface WorkoutLoggerProps {
   onSave: (log: WorkoutLog) => void;
   routines: CustomRoutine[];
   onAddRoutine: (routine: Omit<CustomRoutine, 'id'>) => CustomRoutine;
+  logs: WorkoutLog[];
 }
 
 const PlusIcon = () => (
@@ -16,7 +16,7 @@ const PlusIcon = () => (
     </svg>
 );
 
-const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine }) => {
+const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs }) => {
   const [selectedRoutine, setSelectedRoutine] = useState<CustomRoutine | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isRoutineEditorOpen, setIsRoutineEditorOpen] = useState(false);
@@ -116,6 +116,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         isOpen={isRoutineEditorOpen}
         onClose={() => setIsRoutineEditorOpen(false)}
         onSave={handleRoutineSave}
+        logs={logs}
       />
     </>
   );

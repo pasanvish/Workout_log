@@ -1,18 +1,62 @@
-
-import React, { useState, useMemo } from 'react';
-import { CustomRoutine } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { CustomRoutine, WorkoutLog } from '../types';
 import { MASTER_EXERCISE_LIST } from '../constants';
 
 interface RoutineEditorProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (routine: Omit<CustomRoutine, 'id'>) => void;
+  logs: WorkoutLog[];
 }
 
-const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave }) => {
+const PlusIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+    </svg>
+);
+
+const generateSuggestions = (firstExercise: string, logs: WorkoutLog[]): string[] => {
+    const coOccurrenceCount: Record<string, number> = {};
+
+    const relevantLogs = logs.filter(log => 
+        log.exercises.some(ex => ex.name === firstExercise)
+    );
+
+    for (const log of relevantLogs) {
+        for (const exercise of log.exercises) {
+            if (exercise.name !== firstExercise) {
+                coOccurrenceCount[exercise.name] = (coOccurrenceCount[exercise.name] || 0) + 1;
+            }
+        }
+    }
+
+    const sortedSuggestions = Object.entries(coOccurrenceCount)
+        .sort((a, b) => b[1] - a[1])
+        .map(entry => entry[0]);
+
+    return sortedSuggestions.slice(0, 8); // Return top 8 suggestions
+};
+
+
+const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, logs }) => {
   const [routineName, setRoutineName] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (selectedExercises.size === 1) {
+        const firstExercise = Array.from(selectedExercises)[0];
+        const newSuggestions = generateSuggestions(firstExercise, logs);
+        setSuggestions(newSuggestions);
+    } else {
+        setSuggestions([]);
+    }
+  }, [selectedExercises, logs]);
+
+  const unselectedSuggestions = useMemo(() => {
+    return suggestions.filter(suggestion => !selectedExercises.has(suggestion));
+  }, [suggestions, selectedExercises]);
 
   const handleToggleExercise = (exercise: string) => {
     setSelectedExercises(prev => {
@@ -24,6 +68,10 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave }
       }
       return newSet;
     });
+  };
+
+  const handleAddAllSuggestions = () => {
+    setSelectedExercises(prevSelected => new Set([...prevSelected, ...unselectedSuggestions]));
   };
 
   const handleSave = () => {
@@ -98,6 +146,39 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave }
               className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors"
             />
           </div>
+
+          {unselectedSuggestions.length > 0 && (
+            <div className="border-t border-border-color pt-4 animate-fade-in">
+                <div className="flex justify-between items-center mb-3">
+                    <div>
+                        <h3 className="text-md font-semibold text-brand-light">Smart Suggestions</h3>
+                        <p className="text-xs text-text-secondary mt-1">Based on your history with <span className="font-bold text-text-primary">'{Array.from(selectedExercises)[0]}'</span>.</p>
+                    </div>
+                    {unselectedSuggestions.length > 0 && (
+                         <button
+                            onClick={handleAddAllSuggestions}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold bg-brand-primary/20 text-brand-light hover:bg-brand-primary/40 transition-colors"
+                        >
+                            <PlusIcon />
+                            <span>Add All</span>
+                        </button>
+                    )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {unselectedSuggestions.map(exercise => (
+                        <button
+                            key={exercise}
+                            onClick={() => handleToggleExercise(exercise)}
+                            className="p-2 rounded-md text-sm bg-card-dark hover:bg-gray-600 transition-colors flex items-center gap-2 text-text-secondary hover:text-text-primary"
+                        >
+                            <PlusIcon />
+                            <span>{exercise}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             {Object.entries(filteredExercises).map(([category, exercises]) => (
               <div key={category}>
