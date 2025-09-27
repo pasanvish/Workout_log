@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
-import { Exercise, WorkoutLog, CustomRoutine } from '../types';
+import { Exercise, WorkoutLog, CustomRoutine, CustomExercise } from '../types';
 import ExerciseLogger from './ExerciseLogger';
 import RoutineEditor from './RoutineEditor';
+import WorkoutFeedbackModal from './WorkoutFeedbackModal';
+import ExercisePickerModal from './ExercisePickerModal';
 
 interface WorkoutLoggerProps {
   onSave: (log: WorkoutLog) => void;
   routines: CustomRoutine[];
   onAddRoutine: (routine: Omit<CustomRoutine, 'id'>) => CustomRoutine;
   logs: WorkoutLog[];
+  customExercises: CustomExercise[];
+  onAddCustomExercise: (exercise: Omit<CustomExercise, 'id'>) => CustomExercise;
 }
 
 const PlusIcon = () => (
@@ -16,10 +20,13 @@ const PlusIcon = () => (
     </svg>
 );
 
-const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs }) => {
+const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs, customExercises, onAddCustomExercise }) => {
   const [selectedRoutine, setSelectedRoutine] = useState<CustomRoutine | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isRoutineEditorOpen, setIsRoutineEditorOpen] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [pendingLog, setPendingLog] = useState<Omit<WorkoutLog, 'effort'> | null>(null);
+  const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false);
 
   const handleRoutineSelect = (routine: CustomRoutine) => {
     setSelectedRoutine(routine);
@@ -36,21 +43,41 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
     setExercises(prev => prev.map(ex => ex.name === exerciseName ? { ...ex, sets: updatedSets } : ex));
   };
   
-  const handleSaveWorkout = () => {
+  const handleInitiateSave = () => {
     if (!selectedRoutine) return;
-    const newLog: WorkoutLog = {
+    const newLog: Omit<WorkoutLog, 'effort'> = {
       id: new Date().toISOString(),
       date: new Date().toISOString(),
       routineName: selectedRoutine.name,
       exercises: exercises.filter(e => e.sets.some(s => s.weight && s.reps)),
     };
     if (newLog.exercises.length > 0) {
-      onSave(newLog);
-      setExercises([]);
-      setSelectedRoutine(null);
+      setPendingLog(newLog);
+      setIsFeedbackModalOpen(true);
     } else {
       alert("Please log at least one set for an exercise before saving.");
     }
+  };
+
+  const handleConfirmSave = (effort: number) => {
+    if (!pendingLog) return;
+    const completeLog: WorkoutLog = { ...pendingLog, effort };
+    onSave(completeLog);
+    
+    // Reset state
+    setExercises([]);
+    setSelectedRoutine(null);
+    setPendingLog(null);
+    setIsFeedbackModalOpen(false);
+  };
+
+  const handleAddExercises = (exerciseNames: string[]) => {
+    const newExercises = exerciseNames.map(name => ({
+      name,
+      sets: [{ id: Date.now().toString(), weight: '', reps: '' }]
+    }));
+    setExercises(prev => [...prev, ...newExercises]);
+    setIsExercisePickerOpen(false);
   };
 
   return (
@@ -85,7 +112,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
           </div>
         </div>
         
-        {selectedRoutine && exercises.length > 0 && (
+        {selectedRoutine && (
           <div>
             <h3 className="text-lg font-semibold text-text-primary mb-3">2. Log Your Sets for <span className="text-brand-light">{selectedRoutine.name}</span></h3>
             <div className="space-y-4">
@@ -96,13 +123,20 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
                   onSetChange={handleSetChange}
                 />
               ))}
+               <button
+                  onClick={() => setIsExercisePickerOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-lg border-2 border-dashed border-border-color text-text-secondary hover:border-brand-primary hover:text-brand-primary transition-all duration-200"
+                >
+                  <PlusIcon />
+                  <span>Add Exercise</span>
+                </button>
             </div>
           </div>
         )}
 
         {selectedRoutine && (
            <button
-            onClick={handleSaveWorkout}
+            onClick={handleInitiateSave}
             className="w-full bg-gradient-to-r from-brand-primary to-cyan-500 hover:from-brand-secondary hover:to-cyan-600 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-brand-primary/40 flex items-center justify-center gap-2"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -118,6 +152,21 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         onSave={handleRoutineSave}
         logs={logs}
         routines={routines}
+        customExercises={customExercises}
+        onAddCustomExercise={onAddCustomExercise}
+      />
+      <WorkoutFeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        onConfirm={handleConfirmSave}
+      />
+      <ExercisePickerModal
+        isOpen={isExercisePickerOpen}
+        onClose={() => setIsExercisePickerOpen(false)}
+        onAddExercises={handleAddExercises}
+        customExercises={customExercises}
+        onAddCustomExercise={onAddCustomExercise}
+        currentExercises={exercises}
       />
     </>
   );

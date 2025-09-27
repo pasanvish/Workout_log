@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { CustomRoutine, WorkoutLog } from '../types';
+import { CustomRoutine, WorkoutLog, CustomExercise } from '../types';
 import { MASTER_EXERCISE_LIST } from '../constants';
+import CreateExerciseModal from './CreateExerciseModal';
 
 interface RoutineEditorProps {
   isOpen: boolean;
@@ -8,6 +9,8 @@ interface RoutineEditorProps {
   onSave: (routine: Omit<CustomRoutine, 'id'>) => void;
   logs: WorkoutLog[];
   routines: CustomRoutine[];
+  customExercises: CustomExercise[];
+  onAddCustomExercise: (exercise: Omit<CustomExercise, 'id'>) => CustomExercise;
 }
 
 const PlusIcon = () => (
@@ -56,12 +59,29 @@ const generateSuggestions = (firstExercise: string, logs: WorkoutLog[], routines
 };
 
 
-const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, logs, routines }) => {
+const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, logs, routines, customExercises, onAddCustomExercise }) => {
   const [routineName, setRoutineName] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionAnchor, setSuggestionAnchor] = useState<string | null>(null);
+  const [isCreateExerciseModalOpen, setCreateExerciseModalOpen] = useState(false);
+
+  const combinedExerciseList = useMemo(() => {
+    // FIX: Explicitly cast the type after JSON.parse to avoid it being inferred as `any`.
+    // This ensures type safety throughout the component.
+    const combined = JSON.parse(JSON.stringify(MASTER_EXERCISE_LIST)) as Record<string, string[]>;
+    customExercises.forEach(ex => {
+        if (!combined[ex.category]) {
+            combined[ex.category] = [];
+        }
+        if (!combined[ex.category].includes(ex.name)) {
+            combined[ex.category].push(ex.name);
+        }
+    });
+    return combined;
+  }, [customExercises]);
+
 
   useEffect(() => {
     const exercises = Array.from(selectedExercises);
@@ -136,14 +156,20 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
     onClose();
   };
 
+  const handleCreateExerciseSave = (name: string, category: string) => {
+    const newExercise = onAddCustomExercise({ name, category });
+    handleToggleExercise(newExercise.name);
+    setCreateExerciseModalOpen(false);
+  };
+
   const filteredExercises = useMemo(() => {
     if (!searchTerm) {
-      return MASTER_EXERCISE_LIST;
+      return combinedExerciseList;
     }
     const lowercasedFilter = searchTerm.toLowerCase();
     const filtered: Record<string, string[]> = {};
-    for (const category in MASTER_EXERCISE_LIST) {
-      const matchingExercises = MASTER_EXERCISE_LIST[category].filter(exercise =>
+    for (const category in combinedExerciseList) {
+      const matchingExercises = combinedExerciseList[category].filter(exercise =>
         exercise.toLowerCase().includes(lowercasedFilter)
       );
       if (matchingExercises.length > 0) {
@@ -151,11 +177,12 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
       }
     }
     return filtered;
-  }, [searchTerm]);
+  }, [searchTerm, combinedExerciseList]);
 
   if (!isOpen) return null;
 
   return (
+    <>
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center p-4"
       onClick={handleClose}
@@ -182,16 +209,21 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
               className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors"
             />
           </div>
-          <div>
-            <label htmlFor="search" className="block text-sm font-medium text-text-secondary mb-1">Search Exercises</label>
-            <input
-              id="search"
-              type="text"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Search for an exercise..."
-              className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors"
-            />
+          <div className="flex gap-2 items-end">
+             <div className="flex-grow">
+                <label htmlFor="search" className="block text-sm font-medium text-text-secondary mb-1">Search Exercises</label>
+                <input
+                id="search"
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search or add new..."
+                className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors"
+                />
+            </div>
+            <button onClick={() => setCreateExerciseModalOpen(true)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-colors h-[40px] flex-shrink-0">
+                Create New
+            </button>
           </div>
 
           {suggestionAnchor && unselectedSuggestions.length > 0 && (
@@ -243,6 +275,14 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
                 </div>
               </div>
             ))}
+             {Object.keys(filteredExercises).length === 0 && searchTerm && (
+                <div className="text-center text-text-secondary p-4 bg-background-dark rounded-md">
+                    <p>No exercises found for "{searchTerm}".</p>
+                    <button onClick={() => setCreateExerciseModalOpen(true)} className="text-brand-light font-semibold mt-2">
+                        Create it now?
+                    </button>
+                </div>
+            )}
           </div>
         </main>
         
@@ -260,6 +300,13 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
         </footer>
       </div>
     </div>
+    <CreateExerciseModal
+        isOpen={isCreateExerciseModalOpen}
+        onClose={() => setCreateExerciseModalOpen(false)}
+        onSave={handleCreateExerciseSave}
+        initialValue={searchTerm}
+    />
+    </>
   );
 };
 

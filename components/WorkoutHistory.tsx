@@ -11,6 +11,14 @@ interface WorkoutHistoryProps {
   activeProfile: Profile | undefined;
 }
 
+const EFFORT_LEVELS: Record<number, { emoji: string; label: string }> = {
+  1: { emoji: '😌', label: 'Very Easy' },
+  2: { emoji: '😊', label: 'Easy' },
+  3: { emoji: '🙂', label: 'Moderate' },
+  4: { emoji: '🥵', label: 'Hard' },
+  5: { emoji: '🤮', label: 'Max Effort' },
+};
+
 const DownloadIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -132,6 +140,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
             .workout-session { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; page-break-inside: avoid; }
             .session-header h2 { font-size: 20px; margin: 0; }
             .session-header p { font-size: 14px; color: #666; margin: 0; }
+            .effort-rating { font-size: 14px; font-weight: bold; color: #333; margin-top: 5px; }
             .exercise { margin-top: 15px; }
             .exercise h3 { font-size: 16px; margin-bottom: 5px; }
             .sets-list { list-style: none; padding-left: 0; }
@@ -144,6 +153,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
             <div class="session-header">
                 <h2>${log.routineName}</h2>
                 <p>${new Date(log.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                ${log.effort ? `<p class="effort-rating">Session Effort: ${EFFORT_LEVELS[log.effort]?.label || 'N/A'}</p>` : ''}
             </div>
             ${log.exercises.map(ex => `
                 <div class="exercise">
@@ -329,6 +339,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
           <div className="space-y-4">
             {filteredLogs.map(log => {
               const isExpanded = expandedLogs.has(log.id);
+              const effort = log.effort ? EFFORT_LEVELS[log.effort] : null;
               return (
               <div key={log.id} className="bg-card-dark/50 rounded-xl shadow-lg border border-border-color/50 overflow-hidden transition-all duration-300">
                 <div 
@@ -342,9 +353,12 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                       <span className="text-sm text-text-secondary">{new Date(log.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="hidden sm:block text-xs font-mono bg-background-dark text-text-secondary px-2 py-1 rounded-full">
-                      {log.exercises.length} {log.exercises.length === 1 ? 'Exercise' : 'Exercises'}
-                    </div>
+                    {effort && (
+                      <div className="hidden sm:flex items-center gap-2 text-xs font-mono bg-background-dark text-text-secondary px-3 py-1 rounded-full" title={`Effort: ${effort.label}`}>
+                        <span className="text-lg">{effort.emoji}</span>
+                        <span className="hidden lg:inline">{effort.label}</span>
+                      </div>
+                    )}
                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-text-secondary transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>

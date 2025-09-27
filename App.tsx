@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import WorkoutLogger from './components/WorkoutLogger';
 import HistoryDrawer from './components/HistoryDrawer';
 import ProfileManager from './components/ProfileManager';
-import { WorkoutLog, Profile, CustomRoutine } from './types';
+import { WorkoutLog, Profile, CustomRoutine, CustomExercise } from './types';
 
 const App: React.FC = () => {
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
@@ -12,6 +12,7 @@ const App: React.FC = () => {
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [workoutLogs, setWorkoutLogs] = useState<Record<string, WorkoutLog[]>>({});
   const [customRoutines, setCustomRoutines] = useState<Record<string, CustomRoutine[]>>({});
+  const [customExercises, setCustomExercises] = useState<Record<string, CustomExercise[]>>({});
   const [isAppReady, setIsAppReady] = useState(false);
 
 
@@ -21,11 +22,13 @@ const App: React.FC = () => {
       const savedActiveProfileId = JSON.parse(localStorage.getItem('activeProfileId') || 'null');
       const savedWorkoutLogs = JSON.parse(localStorage.getItem('workoutLogs') || '{}');
       const savedCustomRoutines = JSON.parse(localStorage.getItem('customRoutines') || '{}');
+      const savedCustomExercises = JSON.parse(localStorage.getItem('customExercises') || '{}');
 
       setProfiles(savedProfiles);
       setActiveProfileId(savedActiveProfileId);
       setWorkoutLogs(savedWorkoutLogs);
       setCustomRoutines(savedCustomRoutines);
+      setCustomExercises(savedCustomExercises);
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
     } finally {
@@ -40,14 +43,16 @@ const App: React.FC = () => {
       localStorage.setItem('activeProfileId', JSON.stringify(activeProfileId));
       localStorage.setItem('workoutLogs', JSON.stringify(workoutLogs));
       localStorage.setItem('customRoutines', JSON.stringify(customRoutines));
+      localStorage.setItem('customExercises', JSON.stringify(customExercises));
     } catch (error) {
       console.error("Failed to save data to localStorage", error);
     }
-  }, [profiles, activeProfileId, workoutLogs, customRoutines, isAppReady]);
+  }, [profiles, activeProfileId, workoutLogs, customRoutines, customExercises, isAppReady]);
 
   const activeProfile = useMemo(() => profiles.find(p => p.id === activeProfileId), [profiles, activeProfileId]);
   const activeLogs = useMemo(() => (activeProfileId && workoutLogs[activeProfileId]) || [], [workoutLogs, activeProfileId]);
   const activeRoutines = useMemo(() => (activeProfileId && customRoutines[activeProfileId]) || [], [customRoutines, activeProfileId]);
+  const activeCustomExercises = useMemo(() => (activeProfileId && customExercises[activeProfileId]) || [], [customExercises, activeProfileId]);
   
   const addWorkoutLog = useCallback((log: WorkoutLog) => {
     if (!activeProfileId) return;
@@ -99,6 +104,14 @@ const App: React.FC = () => {
     setCustomRoutines(prev => ({...prev, [activeProfileId]: newRoutines}));
     return newRoutine;
   };
+  
+  const addCustomExercise = (exercise: Omit<CustomExercise, 'id'>) => {
+    if(!activeProfileId) return;
+    const newExercise = { ...exercise, id: Date.now().toString() };
+    const newExercises = [...(customExercises[activeProfileId] || []), newExercise];
+    setCustomExercises(prev => ({...prev, [activeProfileId]: newExercises}));
+    return newExercise;
+  };
 
   if (!isAppReady) {
     return <div className="min-h-screen bg-background-dark flex items-center justify-center"><p>Loading...</p></div>
@@ -145,6 +158,8 @@ const App: React.FC = () => {
             routines={activeRoutines}
             onAddRoutine={addRoutine}
             logs={activeLogs}
+            customExercises={activeCustomExercises}
+            onAddCustomExercise={addCustomExercise}
         />
       </main>
       <HistoryDrawer

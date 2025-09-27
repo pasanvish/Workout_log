@@ -11,6 +11,12 @@ export interface CustomRoutine {
   exercises: string[];
 }
 
+export interface CustomExercise {
+  id: string;
+  name: string;
+  category: string;
+}
+
 export interface Set {
     id: string;
     weight: string;
@@ -27,6 +33,7 @@ export interface WorkoutLog {
     date: string;
     routineName: string;
     exercises: Exercise[];
+    effort?: number; // 1 (easy) to 5 (max effort)
 }
 
 export interface Badge {
