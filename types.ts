@@ -35,7 +35,6 @@ export interface WorkoutLog {
     routineName: string;
     exercises: Exercise[];
     effort?: number; // 1 (easy) to 5 (max effort)
-    totalWeightLifted?: number;
 }
 
 export interface BodyMeasurementLog {

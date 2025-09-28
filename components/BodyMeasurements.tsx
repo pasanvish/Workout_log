@@ -47,8 +47,7 @@ const BodyMeasurements: React.FC<BodyMeasurementsProps> = ({ logs, onSave }) => 
 
   const handleSave = () => {
     const measurementsToSave = Object.fromEntries(
-        // FIX: Add a `typeof value === 'string'` check to ensure `value.trim()` is only called on strings.
-        Object.entries(formState).filter(([key, value]) => key !== 'date' && typeof value === 'string' && value.trim() !== '')
+        Object.entries(formState).filter(([key, value]) => key !== 'date' && value && value.trim() !== '')
     );
 
     if (Object.keys(measurementsToSave).length === 0) {
@@ -64,8 +63,7 @@ const BodyMeasurements: React.FC<BodyMeasurementsProps> = ({ logs, onSave }) => 
   };
   
   const isSaveDisabled = useMemo(() => {
-    // FIX: Add a `typeof value === 'string'` check to safely call `value.trim()`.
-    return Object.entries(formState).every(([key, value]) => key === 'date' || !value || (typeof value === 'string' && value.trim() === ''));
+    return Object.entries(formState).every(([key, value]) => key === 'date' || !value || value.trim() === '');
   }, [formState]);
 
   const chartableMeasurements = useMemo(() => {
