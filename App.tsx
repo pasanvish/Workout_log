@@ -72,6 +72,19 @@ const App: React.FC = () => {
   const addWorkoutLog = useCallback((log: WorkoutLog) => {
     if (!activeProfileId) return;
 
+    // Calculate total weight lifted (volume)
+    const totalWeightLifted = log.exercises.reduce((totalVolume, exercise) => {
+        const exerciseVolume = exercise.sets.reduce((volume, set) => {
+            const weight = parseFloat(set.weight);
+            const reps = parseInt(set.reps, 10);
+            if (!isNaN(weight) && !isNaN(reps)) {
+                return volume + (weight * reps);
+            }
+            return volume;
+        }, 0);
+        return totalVolume + exerciseVolume;
+    }, 0);
+
     const currentPRs = personalRecords[activeProfileId] || {};
     const updatedPRs = JSON.parse(JSON.stringify(currentPRs)); // Deep copy
     const newPRsThisSession: Array<{ exerciseName: string; weight: string; reps: string }> = [];
@@ -79,6 +92,7 @@ const App: React.FC = () => {
 
     const logWithPRs: WorkoutLog = {
       ...log,
+      totalWeightLifted,
       exercises: log.exercises.map(ex => ({
         ...ex,
         sets: ex.sets.map(set => {

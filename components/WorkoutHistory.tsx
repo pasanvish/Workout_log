@@ -45,6 +45,13 @@ const MedalIcon = () => (
   </svg>
 );
 
+const WeightIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14a2 2 0 100-4 2 2 0 000 4z" />
+  </svg>
+);
+
 const InfoTooltip: React.FC<{text: string}> = ({ text }) => (
     <div className="relative flex items-center group">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-secondary" viewBox="0 0 20 20" fill="currentColor">
@@ -409,6 +416,14 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                   <div>
                       <h3 className="font-bold text-xl text-brand-light">{log.routineName}</h3>
                       <span className="text-sm text-text-secondary">{new Date(log.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                      {log.totalWeightLifted != null && log.totalWeightLifted > 0 && (
+                          <div className="flex items-center gap-2 mt-2 text-sm">
+                              <WeightIcon />
+                              <p className="text-text-secondary">
+                                  Total Volume: <span className="font-bold text-brand-light">{log.totalWeightLifted.toLocaleString()} kg</span>
+                              </p>
+                          </div>
+                      )}
                   </div>
                   <div className="flex items-center gap-4">
                     {effort && (

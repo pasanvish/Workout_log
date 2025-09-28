@@ -67,7 +67,8 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
   const [suggestionAnchor, setSuggestionAnchor] = useState<string | null>(null);
   const [isCreateExerciseModalOpen, setCreateExerciseModalOpen] = useState(false);
 
-  const combinedExerciseList = useMemo(() => {
+  // FIX: Explicitly typed `combinedExerciseList` to ensure that `exercise` is correctly inferred as a `string` within the `.filter` callback, resolving the type error.
+  const combinedExerciseList: Record<string, string[]> = useMemo(() => {
     // FIX: Explicitly cast the type after JSON.parse to avoid it being inferred as `any`.
     // This ensures type safety throughout the component.
     const combined = JSON.parse(JSON.stringify(MASTER_EXERCISE_LIST)) as Record<string, string[]>;

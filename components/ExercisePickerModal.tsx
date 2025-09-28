@@ -68,7 +68,8 @@ const ExercisePickerModal: React.FC<ExercisePickerModalProps> = ({ isOpen, onClo
     setCreateExerciseModalOpen(false);
   };
 
-  const filteredExercises = useMemo(() => {
+  // FIX: Explicitly typing `filteredExercises` ensures that `exercises` is correctly inferred as `string[]` instead of `unknown`, fixing the call to `.map`.
+  const filteredExercises: Record<string, string[]> = useMemo(() => {
     const lowercasedFilter = searchTerm.toLowerCase();
     const filtered: Record<string, string[]> = {};
     for (const category in combinedExerciseList) {
