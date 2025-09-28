@@ -20,7 +20,8 @@ const ExercisePickerModal: React.FC<ExercisePickerModalProps> = ({ isOpen, onClo
   const currentExerciseNames = useMemo(() => new Set(currentExercises.map(ex => ex.name)), [currentExercises]);
 
   const combinedExerciseList = useMemo(() => {
-    const combined = JSON.parse(JSON.stringify(MASTER_EXERCISE_LIST));
+    // FIX: Add type assertion to ensure correct type inference after JSON.parse.
+    const combined = JSON.parse(JSON.stringify(MASTER_EXERCISE_LIST)) as Record<string, string[]>;
     customExercises.forEach(ex => {
       if (!combined[ex.category]) {
         combined[ex.category] = [];

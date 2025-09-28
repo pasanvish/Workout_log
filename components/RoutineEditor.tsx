@@ -162,7 +162,10 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
     setCreateExerciseModalOpen(false);
   };
 
-  const filteredExercises = useMemo(() => {
+  // FIX: Explicitly typing `filteredExercises` ensures that any issues in its dependencies
+  // are caught and that its value is correctly typed as `Record<string, string[]>`,
+  // which resolves downstream errors.
+  const filteredExercises: Record<string, string[]> = useMemo(() => {
     if (!searchTerm) {
       return combinedExerciseList;
     }

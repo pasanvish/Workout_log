@@ -335,15 +335,19 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                 <div key={exerciseName} className="bg-background-dark/50 p-4 rounded-xl">
                   <h4 className="font-bold text-brand-light text-lg mb-3">{exerciseName}</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {Object.entries(personalRecords[exerciseName])
-                      .sort((a, b) => parseInt(a[0], 10) - parseInt(b[0], 10))
-                      .map(([reps, pr]) => (
-                        <div key={reps} className="bg-card-dark p-3 rounded-lg text-center">
-                          <p className="text-sm text-text-secondary">{reps} Rep Max</p>
-                          <p className="font-bold text-xl text-text-primary mt-1">{pr.weight} kg</p>
-                          <p className="text-xs text-text-secondary mt-1">{new Date(pr.date).toLocaleDateString()}</p>
-                        </div>
-                    ))}
+                    {/* FIX: Use Object.keys and direct property access to ensure correct typing for personal records, avoiding errors with Object.entries. */}
+                    {Object.keys(personalRecords[exerciseName])
+                      .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+                      .map((reps) => {
+                        const pr = personalRecords[exerciseName][reps];
+                        return (
+                          <div key={reps} className="bg-card-dark p-3 rounded-lg text-center">
+                            <p className="text-sm text-text-secondary">{reps} Rep Max</p>
+                            <p className="font-bold text-xl text-text-primary mt-1">{pr.weight} kg</p>
+                            <p className="text-xs text-text-secondary mt-1">{new Date(pr.date).toLocaleDateString()}</p>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               ))}
