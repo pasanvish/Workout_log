@@ -1,11 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#111827"/>
-  <rect x="96" y="96" width="320" height="320" rx="64" fill="#14b8a6"/>
-  <g fill="#fff">
-    <rect x="140" y="196" width="36" height="120" rx="10"/>
-    <rect x="336" y="196" width="36" height="120" rx="10"/>
-    <rect x="186" y="216" width="28" height="80" rx="8"/>
-    <rect x="298" y="216" width="28" height="80" rx="8"/>
-    <rect x="214" y="244" width="84" height="24" rx="6"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><defs>
+  <linearGradient id="tile" x2="1" y2="1" gradientUnits="objectBoundingBox">
+    <stop stop-color="#263c45"/><stop offset=".55" stop-color="#14252f"/><stop offset="1" stop-color="#0b1116"/>
+  </linearGradient>
+  <linearGradient id="plate" x2="1" y2="1" gradientUnits="objectBoundingBox">
+    <stop stop-color="#84b5b6"/><stop offset=".5" stop-color="#426570"/><stop offset="1" stop-color="#233b48"/>
+  </linearGradient>
+  <linearGradient id="lift" x2="1" y2="1" gradientUnits="objectBoundingBox">
+    <stop stop-color="#f4ffb4"/><stop offset="1" stop-color="#baef55"/>
+  </linearGradient></defs>
+  <rect width="512" height="512" fill="url(#tile)"/>
+  <path d="M0 412 412 0M0 470 470 0M42 512 512 42M100 512 512 100M158 512 512 158" fill="none" stroke="#a3d7cf" stroke-opacity=".08" stroke-width="2"/>
+  <circle cx="256" cy="261" r="142" fill="#09121a" opacity=".75"/>
+  <circle cx="256" cy="255" r="140" fill="url(#plate)"/>
+  <circle cx="256" cy="255" r="124" fill="#1c303b" stroke="#9ec7c4" stroke-opacity=".54" stroke-width="2"/>
+  <circle cx="256" cy="255" r="104" fill="#14232d"/>
+  <path d="M256 130v18m125 107h-18M256 380v-18M131 255h18" fill="none" stroke="#b5dfd7" stroke-opacity=".65" stroke-width="3"/>
+  <path d="M166 278l41-41 36 35 59-61h-38v-25h82v82h-25v-39l-78 80-36-36-41 42z" fill="url(#lift)"/>
+  <path d="M260 316h46m-62 14h43" fill="none" stroke="#bdeb69" stroke-opacity=".45" stroke-linecap="round" stroke-width="4"/></svg>
