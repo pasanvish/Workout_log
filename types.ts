@@ -1,6 +1,14 @@
 import React from 'react';
 
-export interface Profile {
+export type Accent = 'mint' | 'blue' | 'violet' | 'amber';
+
+export interface ProfileAppearance {
+  avatar?: string;
+  accent?: Accent;
+  weeklyGoal?: number;
+}
+
+export interface Profile extends ProfileAppearance {
   id: string;
   name: string;
 }
@@ -59,6 +67,7 @@ export interface Badge {
   description: string;
   icon: React.FC<React.SVGProps<SVGSVGElement>>;
   isEarned: (logs: WorkoutLog[]) => boolean;
+  progress?: (logs: WorkoutLog[]) => { current: number; target: number };
 }
 
 // Personal Record Types

@@ -14,13 +14,13 @@
   body { background-image: radial-gradient(ellipse at 15% 0%, #12332d55, transparent 45%); min-width: 320px; }
   button, input, select { -webkit-tap-highlight-color: transparent; }
   button { touch-action: manipulation; }
-  button:focus-visible, a:focus-visible { outline: 2px solid #75ebc9; outline-offset: 4px; }
-  input:focus-visible, select:focus-visible { outline: 2px solid #75ebc9; outline-offset: 2px; }
-  ::selection { background: #087f70; color: white; }
+  button:focus-visible, a:focus-visible { outline: 2px solid rgb(var(--brand-light)); outline-offset: 4px; }
+  input:focus-visible, select:focus-visible { outline: 2px solid rgb(var(--brand-light)); outline-offset: 2px; }
+  ::selection { background: rgb(var(--brand-secondary)); color: white; }
 }
 @layer components {
   .eyebrow { @apply text-[10px] sm:text-[11px] font-bold uppercase tracking-[.16em] text-brand-light; }
-  .workout-hero { @apply flex items-center justify-between gap-4 overflow-hidden rounded-3xl border border-border-color p-6 sm:p-10; background: linear-gradient(115deg, #192f32, #121c24 70%); }
+  .workout-hero { @apply flex items-center justify-between gap-4 overflow-hidden rounded-3xl border border-border-color p-6 sm:p-10; background: linear-gradient(115deg, rgb(var(--brand-secondary) / .34), #121c24 76%); }
   .hero-pill { @apply inline-flex mt-3 rounded-full px-3 py-1.5 text-xs font-medium text-brand-light border border-brand-primary/20 bg-brand-primary/10; }
   .stat-card { @apply flex flex-col rounded-2xl bg-background-light border border-border-color/70 p-3 sm:p-5; }
   .routine-card { @apply flex flex-col items-start text-left p-4 rounded-2xl border border-border-color bg-background-light transition-colors min-h-[144px] hover:border-brand-primary; }
@@ -64,8 +64,8 @@
   appearance: none;
 }
 .session-progress::-webkit-progress-bar { background: #0b1116; }
-.session-progress::-webkit-progress-value { background: #75ebc9; border-radius: 999px; }
-.session-progress::-moz-progress-bar { background: #75ebc9; border-radius: 999px; }
+.session-progress::-webkit-progress-value { background: rgb(var(--brand-light)); border-radius: 999px; }
+.session-progress::-moz-progress-bar { background: rgb(var(--brand-light)); border-radius: 999px; }
 
 @layer components {
   .app-dialog { @apply fixed m-auto w-[calc(100%-2rem)] max-w-md overflow-hidden rounded-3xl border border-border-color bg-background-light p-0 text-text-primary shadow-2xl; }
@@ -97,4 +97,15 @@ html:has(.app-dialog[open]) { overflow: hidden; }
   .progress-link { @apply flex w-full items-center gap-3 rounded-2xl border border-border-color bg-background-light p-3 text-left hover:border-brand-primary; }
   .mobile-nav-item { @apply flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-text-secondary hover:bg-card-dark; }
   .mobile-nav-item[aria-current="page"] { @apply bg-brand-primary/10 text-brand-light; }
+}
+
+:root, [data-accent="mint"] { --brand-primary: 16 188 160; --brand-secondary: 8 127 112; --brand-light: 117 235 201; }
+[data-accent="blue"] { --brand-primary: 56 169 225; --brand-secondary: 22 96 154; --brand-light: 142 219 255; }
+[data-accent="violet"] { --brand-primary: 164 113 239; --brand-secondary: 99 62 164; --brand-light: 212 181 255; }
+[data-accent="amber"] { --brand-primary: 226 153 48; --brand-secondary: 143 87 28; --brand-light: 255 210 133; }
+@layer components {
+  .profile-avatar { @apply inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-brand-primary/30 bg-brand-primary/10 font-bold text-brand-light; }
+  .accent-option { @apply flex min-h-11 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-border-color bg-background-dark py-2 text-xs font-semibold text-text-secondary; }
+  .accent-option:has(input:checked) { @apply border-brand-light bg-brand-primary/10 text-text-primary; }
+  .accent-option:has(input:focus-visible) { outline: 2px solid rgb(var(--brand-light)); outline-offset: 2px; }
 }
