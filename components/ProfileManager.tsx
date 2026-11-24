@@ -21,9 +21,9 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ profiles, onAddProfile,
 
     return (
         <div className="min-h-screen bg-background-dark flex items-center justify-center p-4">
-            <div className="w-full max-w-md mx-auto bg-background-light p-8 rounded-xl shadow-2xl">
+            <div className="welcome-card w-full max-w-md mx-auto bg-background-light p-6 sm:p-8 rounded-3xl shadow-2xl border border-border-color">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-text-primary tracking-wider">Welcome to Gym Logger</h1>
+                    <img src="./icon.svg" alt="" className="w-14 h-14 rounded-2xl mx-auto mb-5" /><p className="eyebrow mb-3">MAKE EVERY REP COUNT</p><h1 className="text-3xl font-bold text-text-primary tracking-wider">Welcome to Gym Logger</h1>
                     <p className="text-text-secondary mt-2">Select a profile or create a new one to get started.</p>
                 </div>
 
@@ -52,7 +52,7 @@ const ProfileManager: React.FC<ProfileManagerProps> = ({ profiles, onAddProfile,
                             value={newProfileName}
                             onChange={(e) => setNewProfileName(e.target.value)}
                             placeholder="Enter profile name..."
-                            className="flex-grow bg-background-dark border-2 border-border-color rounded-md p-3 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors duration-200"
+                            className="min-w-0 flex-1 bg-background-dark border-2 border-border-color rounded-md p-3 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors duration-200"
                             aria-label="New profile name"
                         />
                         <button 

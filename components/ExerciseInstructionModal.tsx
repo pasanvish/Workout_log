@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
+import ExerciseArtwork from './ExerciseArtwork';
+import ExerciseMuscles from './ExerciseMuscles';
+import { getExerciseDetails } from '../exerciseDetails';
 import { EXERCISE_INSTRUCTIONS } from '../instructions';
 
 interface ExerciseInstructionModalProps {
@@ -26,24 +29,14 @@ const formatInstructions = (text: string) => {
 };
 
 const ExerciseInstructionModal: React.FC<ExerciseInstructionModalProps> = ({ isOpen, onClose, exerciseName }) => {
-  const [instructions, setInstructions] = useState('');
+  if (!isOpen || !exerciseName) return null;
 
-  useEffect(() => {
-    if (isOpen && exerciseName) {
-      const instruction = EXERCISE_INSTRUCTIONS[exerciseName];
-      if (instruction) {
-        setInstructions(instruction);
-      } else {
-        setInstructions("Sorry, pre-loaded instructions for this exercise are not available yet.");
-      }
-    }
-  }, [isOpen, exerciseName]);
-  
-  const formattedHtml = useMemo(() => {
-    return { __html: formatInstructions(instructions) };
-  }, [instructions]);
-
-  if (!isOpen) return null;
+  const details = getExerciseDetails(exerciseName);
+  const frames = details.reference?.frames ?? [];
+  const hasMultipleFrames = frames.length > 1;
+  const instructions = Object.hasOwn(EXERCISE_INSTRUCTIONS, exerciseName)
+    ? EXERCISE_INSTRUCTIONS[exerciseName]
+    : undefined;
 
   return (
     <div
@@ -51,21 +44,52 @@ const ExerciseInstructionModal: React.FC<ExerciseInstructionModalProps> = ({ isO
       onClick={onClose}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="exercise-guide-title"
     >
       <div
-        className="bg-background-light w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        className="bg-background-light w-full max-w-2xl max-h-[90dvh] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         <header className="p-4 border-b border-border-color flex justify-between items-center flex-shrink-0">
-          <h2 className="text-xl font-bold text-text-primary">{exerciseName}</h2>
+          <h2 id="exercise-guide-title" className="text-xl font-bold text-text-primary">{exerciseName}</h2>
           <button onClick={onClose} className="p-2 rounded-full text-text-secondary hover:bg-card-dark hover:text-text-primary transition-colors" aria-label="Close instructions">
              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </header>
 
-        <main className="p-6 overflow-y-auto">
+        <main className="p-4 sm:p-6 overflow-y-auto">
+          <div className="guide-summary mb-5">
+            {details.reference && (
+              <>
+                <div className={`grid gap-2 mb-2 ${hasMultipleFrames ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {frames.map((frame, index) => (
+                    <figure key={frame}>
+                      <ExerciseArtwork
+                        name={exerciseName}
+                        frame={frame}
+                        alt={`${exerciseName}, ${hasMultipleFrames ? `position ${index + 1}` : 'exercise position'}`}
+                        className="guide-art"
+                      />
+                      {hasMultipleFrames && (
+                        <figcaption className="mt-1 text-center text-xs text-text-secondary">Position {index + 1}</figcaption>
+                      )}
+                    </figure>
+                  ))}
+                </div>
+                <p className="mb-4 text-xs text-text-secondary">
+                  {details.reference.source === 'repdb'
+                    ? <a href="https://repdb.co" target="_blank" rel="noopener noreferrer" className="underline">Exercise data by RepDB (repdb.co)</a>
+                    : <>Artwork by <a href="https://bryllim.github.io/workout-guide/" target="_blank" rel="noopener noreferrer" className="underline">Bryl Lim and Everkinetic</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" className="underline">CC BY-SA 4.0</a></>}
+                </p>
+              </>
+            )}
+            <p className="text-text-primary leading-relaxed mb-3">{details.description}</p>
+            <ExerciseMuscles name={exerciseName} />
+            {!details.reference && <p className="text-sm text-text-secondary">Muscle targets haven’t been added for this custom exercise.</p>}
+          </div>
+          {!instructions && <p className="text-sm text-text-secondary">A detailed step-by-step guide has not been added for this exercise yet.</p>}
           {instructions && (
-            <div className="prose prose-invert text-text-secondary" dangerouslySetInnerHTML={formattedHtml}></div>
+            <div className="prose prose-invert text-text-secondary" dangerouslySetInnerHTML={{ __html: formatInstructions(instructions) }}></div>
           )}
         </main>
         
