@@ -18,71 +18,71 @@ const TrashIcon = () => (
     </svg>
 );
 
+export const newSetId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+// text-base (16px) stops iOS zooming on focus; inputMode brings up the number pad.
+const inputClass = "w-full min-w-0 bg-background-dark border-2 border-border-color rounded-lg px-3 py-2.5 text-base text-center font-semibold focus:outline-none focus:border-brand-primary transition-colors";
 
 const ExerciseLogger: React.FC<ExerciseLoggerProps> = ({ exercise, onSetChange }) => {
-  
+
   const handleInputChange = (setId: string, field: 'weight' | 'reps', value: string) => {
-    const updatedSets = exercise.sets.map(set =>
-      set.id === setId ? { ...set, [field]: value.replace(/[^0-9.]/g, '') } : set
-    );
-    onSetChange(exercise.name, updatedSets);
+    const clean = field === 'reps' ? value.replace(/\D/g, '') : value.replace(',', '.').replace(/[^0-9.]/g, '');
+    onSetChange(exercise.name, exercise.sets.map(set => set.id === setId ? { ...set, [field]: clean } : set));
   };
 
   const addSet = () => {
     const lastSet = exercise.sets[exercise.sets.length - 1] || { weight: '', reps: '' };
-    const newSet = { id: Date.now().toString(), weight: lastSet.weight, reps: lastSet.reps };
-    onSetChange(exercise.name, [...exercise.sets, newSet]);
+    onSetChange(exercise.name, [...exercise.sets, { id: newSetId(), weight: lastSet.weight, reps: lastSet.reps }]);
   };
 
   const removeSet = (setId: string) => {
     if (exercise.sets.length > 1) {
-      const updatedSets = exercise.sets.filter(set => set.id !== setId);
-      onSetChange(exercise.name, updatedSets);
+      onSetChange(exercise.name, exercise.sets.filter(set => set.id !== setId));
     }
   };
 
   return (
     <div>
-      <div className="space-y-3">
+      <div className="grid grid-cols-[2.5rem_1fr_1fr_2.75rem] gap-2 items-center">
+        <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Set</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary text-center">kg</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary text-center">Reps</span>
+        <span />
         {exercise.sets.map((set, index) => (
-          <div key={set.id} className="flex items-center gap-4">
-             <span className="font-mono text-sm text-text-secondary w-12">Set {index + 1}</span>
-            <div className="flex-1 flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="0"
-                value={set.weight}
-                onChange={(e) => handleInputChange(set.id, 'weight', e.target.value)}
-                className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors duration-200"
-                aria-label={`Weight for set ${index + 1}`}
-              />
-              <span className="text-sm text-text-secondary">kg</span>
-            </div>
-            <div className="flex-1 flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="0"
-                value={set.reps}
-                onChange={(e) => handleInputChange(set.id, 'reps', e.target.value)}
-                className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors duration-200"
-                 aria-label={`Reps for set ${index + 1}`}
-              />
-               <span className="text-sm text-text-secondary">reps</span>
-            </div>
-            <button 
-                onClick={() => removeSet(set.id)} 
-                className={`text-gray-500 hover:text-red-500 p-2 transition-opacity ${exercise.sets.length <= 1 ? 'opacity-0 cursor-default' : 'opacity-100'}`}
-                disabled={exercise.sets.length <= 1}
-                aria-label={`Remove set ${index + 1}`}
+          <React.Fragment key={set.id}>
+            <span className="font-mono text-base font-bold text-text-secondary text-center">{index + 1}</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="0"
+              value={set.weight}
+              onChange={(e) => handleInputChange(set.id, 'weight', e.target.value)}
+              className={inputClass}
+              aria-label={`${exercise.name} set ${index + 1} weight in kg`}
+            />
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="0"
+              value={set.reps}
+              onChange={(e) => handleInputChange(set.id, 'reps', e.target.value)}
+              className={inputClass}
+              aria-label={`${exercise.name} set ${index + 1} reps`}
+            />
+            <button
+              onClick={() => removeSet(set.id)}
+              className={`h-11 w-11 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ${exercise.sets.length <= 1 ? 'invisible' : ''}`}
+              disabled={exercise.sets.length <= 1}
+              aria-label={`Remove set ${index + 1}`}
             >
-                <TrashIcon/>
+              <TrashIcon />
             </button>
-          </div>
+          </React.Fragment>
         ))}
       </div>
       <button
         onClick={addSet}
-        className="mt-4 flex items-center space-x-2 text-sm text-brand-primary hover:text-brand-light font-semibold transition-colors"
+        className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm text-brand-primary hover:text-brand-light hover:bg-brand-primary/10 font-semibold transition-colors"
       >
         <PlusIcon />
         <span>Add Set</span>

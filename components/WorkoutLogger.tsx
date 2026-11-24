@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Exercise, WorkoutLog, CustomRoutine, CustomExercise } from '../types';
-import ExerciseLogger from './ExerciseLogger';
+import ExerciseLogger, { newSetId } from './ExerciseLogger';
 import RoutineEditor from './RoutineEditor';
 import WorkoutFeedbackModal from './WorkoutFeedbackModal';
 import ExercisePickerModal from './ExercisePickerModal';
@@ -13,6 +13,8 @@ interface WorkoutLoggerProps {
   logs: WorkoutLog[];
   customExercises: CustomExercise[];
   onAddCustomExercise: (exercise: Omit<CustomExercise, 'id'>) => CustomExercise;
+  /** localStorage key for the in-progress workout, so it survives tab switches and app restarts. */
+  draftKey: string;
 }
 
 const PlusIcon = () => (
@@ -28,9 +30,26 @@ const InfoIcon = () => (
 );
 
 
-const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs, customExercises, onAddCustomExercise }) => {
-  const [selectedRoutine, setSelectedRoutine] = useState<CustomRoutine | null>(null);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs, customExercises, onAddCustomExercise, draftKey }) => {
+  const [draft] = useState<{ routine: CustomRoutine; exercises: Exercise[] } | null>(() => {
+    try { return JSON.parse(localStorage.getItem(draftKey) || 'null'); } catch { return null; }
+  });
+  const [selectedRoutine, setSelectedRoutine] = useState<CustomRoutine | null>(draft?.routine ?? null);
+  const [exercises, setExercises] = useState<Exercise[]>(draft?.exercises ?? []);
+
+  useEffect(() => {
+    try {
+      if (selectedRoutine) localStorage.setItem(draftKey, JSON.stringify({ routine: selectedRoutine, exercises }));
+      else localStorage.removeItem(draftKey);
+    } catch { /* storage full or blocked: the workout still works in memory */ }
+  }, [draftKey, selectedRoutine, exercises]);
+
+  // Most recent sets logged for each exercise (logs are newest first).
+  const lastTime = useMemo(() => {
+    const map: Record<string, { date: string; sets: Exercise['sets'] }> = {};
+    for (const log of logs) for (const ex of log.exercises) map[ex.name] ??= { date: log.date, sets: ex.sets };
+    return map;
+  }, [logs]);
   const [isRoutineEditorOpen, setIsRoutineEditorOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [pendingLog, setPendingLog] = useState<Omit<WorkoutLog, 'effort'> | null>(null);
@@ -39,7 +58,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
 
   const handleRoutineSelect = (routine: CustomRoutine) => {
     setSelectedRoutine(routine);
-    setExercises(routine.exercises.map(name => ({ name, sets: [{ id: Date.now().toString(), weight: '', reps: '' }] })));
+    setExercises(routine.exercises.map(name => ({ name, sets: [{ id: newSetId(), weight: '', reps: '' }] })));
   };
 
   const handleRoutineSave = (newRoutineData: Omit<CustomRoutine, 'id'>) => {
@@ -83,10 +102,17 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
   const handleAddExercises = (exerciseNames: string[]) => {
     const newExercises = exerciseNames.map(name => ({
       name,
-      sets: [{ id: Date.now().toString(), weight: '', reps: '' }]
+      sets: [{ id: newSetId(), weight: '', reps: '' }]
     }));
     setExercises(prev => [...prev, ...newExercises]);
     setIsExercisePickerOpen(false);
+  };
+
+  const handleDiscard = () => {
+    if (confirm('Discard this workout? The sets you entered will be lost.')) {
+      setExercises([]);
+      setSelectedRoutine(null);
+    }
   };
 
   const handleShowInstructions = (exerciseName: string) => {
@@ -95,7 +121,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
 
   return (
     <>
-      <div className="bg-background-light p-6 rounded-lg shadow-xl space-y-8 max-w-4xl mx-auto">
+      <div className="bg-background-light p-4 sm:p-6 rounded-xl shadow-xl space-y-8 max-w-4xl mx-auto">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-text-primary">Log Your Workout</h2>
           <p className="text-text-secondary mt-1">Select a routine or create a new one to begin.</p>
@@ -130,12 +156,20 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
             <h3 className="text-lg font-semibold text-text-primary mb-3">2. Log Your Sets for <span className="text-brand-light">{selectedRoutine.name}</span></h3>
             <div className="space-y-4">
               {exercises.map(exercise => (
-                 <div key={exercise.name} className="bg-card-dark p-4 rounded-lg border border-border-color">
-                    <div className="flex justify-between items-center mb-4">
-                        <h4 className="text-md font-semibold text-brand-light">{exercise.name}</h4>
+                 <div key={exercise.name} className="bg-card-dark p-3 sm:p-4 rounded-xl border border-border-color">
+                    <div className="flex justify-between items-start gap-2 mb-3">
+                        <div className="min-w-0">
+                          <h4 className="text-base font-semibold text-brand-light">{exercise.name}</h4>
+                          {lastTime[exercise.name] && (
+                            <p className="text-xs text-text-secondary mt-0.5">
+                              Last time ({new Date(lastTime[exercise.name].date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}):{' '}
+                              <span className="text-text-primary">{lastTime[exercise.name].sets.map(s => `${s.weight}×${s.reps}`).join(' · ')}</span>
+                            </p>
+                          )}
+                        </div>
                         <button 
                           onClick={() => handleShowInstructions(exercise.name)} 
-                          className="text-text-secondary hover:text-brand-light transition-colors"
+                          className="shrink-0 h-10 w-10 -mr-2 -mt-2 flex items-center justify-center rounded-full text-text-secondary hover:text-brand-light transition-colors"
                           aria-label={`Get instructions for ${exercise.name}`}
                           title="Get instructions"
                         >
@@ -172,6 +206,11 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
             <span>Save Workout Session</span>
+          </button>
+        )}
+        {selectedRoutine && (
+          <button onClick={handleDiscard} className="w-full -mt-4 py-2 text-sm text-text-secondary hover:text-red-400 transition-colors">
+            Discard workout
           </button>
         )}
       </div>
