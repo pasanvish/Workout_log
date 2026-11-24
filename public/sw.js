@@ -1,5 +1,5 @@
 // Bump CACHE when the caching logic changes; app updates are picked up automatically.
-const CACHE = 'gym-logger-v3';
+const CACHE = 'gym-logger-v6';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon.svg'];
 
 self.addEventListener('install', event => {

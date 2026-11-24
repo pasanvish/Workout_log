@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { CustomRoutine, WorkoutLog, CustomExercise } from '../types';
 import { MASTER_EXERCISE_LIST } from '../constants';
+import ExerciseArtwork from './ExerciseArtwork';
+import ExerciseMuscles from './ExerciseMuscles';
+import { getExerciseDetails } from '../exerciseDetails';
 import CreateExerciseModal from './CreateExerciseModal';
 
 interface RoutineEditorProps {
@@ -262,14 +265,21 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
             {Object.entries(filteredExercises).map(([category, exercises]) => (
               <div key={category}>
                 <h3 className="text-md font-semibold text-brand-light mb-2">{category}</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {exercises.map(exercise => (
                     <button
                       key={exercise}
                       onClick={() => handleToggleExercise(exercise)}
-                      className={`text-left p-2 rounded-md text-sm transition-colors ${selectedExercises.has(exercise) ? 'bg-brand-secondary text-white' : 'bg-card-dark hover:bg-gray-600'}`}
+                      aria-pressed={selectedExercises.has(exercise)}
+                      className={`picker-card ${selectedExercises.has(exercise) ? 'is-selected' : ''}`}
                     >
-                      {exercise}
+                      <ExerciseArtwork name={exercise} className="picker-art" />
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-semibold text-sm">{exercise}</span>
+                        <span className="block text-xs text-text-secondary mt-1 leading-relaxed">{getExerciseDetails(exercise).description}</span>
+                        <ExerciseMuscles name={exercise} compact />
+                      </span>
+                      <span className="text-brand-light" aria-hidden="true">{selectedExercises.has(exercise) ? '✓' : '+'}</span>
                     </button>
                   ))}
                 </div>

@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Exercise, WorkoutLog, CustomRoutine, CustomExercise } from '../types';
+import ExerciseArtwork from './ExerciseArtwork';
+import ExerciseMuscles from './ExerciseMuscles';
+import { getExerciseDetails } from '../exerciseDetails';
 import ExerciseLogger, { newSetId } from './ExerciseLogger';
 import RoutineEditor from './RoutineEditor';
 import WorkoutFeedbackModal from './WorkoutFeedbackModal';
@@ -121,29 +124,40 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
 
   return (
     <>
-      <div className="bg-background-light p-4 sm:p-6 rounded-xl shadow-xl space-y-8 max-w-4xl mx-auto">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-text-primary">Log Your Workout</h2>
-          <p className="text-text-secondary mt-1">Select a routine or create a new one to begin.</p>
+      <div className="workout-shell space-y-8 max-w-4xl mx-auto">
+        <section className="workout-hero">
+          <div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Your workouts</h2>
+            {selectedRoutine && <span className="hero-pill">Session in progress</span>}
+          </div>
+          <ExerciseArtwork name="Dumbbell Curl" className="hero-art" />
+        </section>
+        <div className="grid grid-cols-3 gap-2 sm:gap-4" aria-label="Training overview">
+          {[
+            [logs.length, 'Sessions logged'],
+            [routines.length, 'Your routines'],
+            [logs.reduce((total, log) => total + log.exercises.reduce((n, ex) => n + ex.sets.filter(s => s.weight && s.reps).length, 0), 0), 'Sets logged'],
+          ].map(([value, label]) => <div key={label} className="stat-card"><span className="text-2xl sm:text-3xl font-bold tracking-tight">{value}</span><span className="text-xs text-text-secondary mt-1">{label}</span></div>)}
         </div>
         
         <div>
-          <h3 className="text-lg font-semibold text-text-primary mb-3">1. Choose Your Routine</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <h3 className="text-lg font-semibold text-text-primary mb-3">Choose your routine</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {routines.map(routine => (
               <button
                 key={routine.id}
                 onClick={() => handleRoutineSelect(routine)}
-                className={`flex flex-col items-center justify-center text-center p-3 rounded-lg border-2 transition-all duration-200 h-28
-                  ${selectedRoutine?.id === routine.id ? 'bg-brand-secondary border-brand-primary text-white' : 'bg-card-dark border-border-color text-text-secondary hover:border-brand-light'}`}
+                className={`routine-card ${selectedRoutine?.id === routine.id ? 'is-selected' : ''}`}
+                aria-pressed={selectedRoutine?.id === routine.id}
               >
-                <span className="text-sm font-bold">{routine.name}</span>
-                <span className="text-xs text-gray-400 mt-1">{routine.exercises.length} exercises</span>
+                <div className="flex items-center justify-between w-full mb-3"><span className="routine-symbol">↗</span><span className="text-xs text-brand-light">{selectedRoutine?.id === routine.id ? 'Selected ✓' : 'Start →'}</span></div>
+                <span className="text-sm font-bold text-text-primary">{routine.name}</span>
+                <span className="text-xs text-text-secondary mt-1">{routine.exercises.length} exercises</span>
               </button>
             ))}
             <button
               onClick={() => setIsRoutineEditorOpen(true)}
-              className="flex flex-col items-center justify-center text-center p-3 rounded-lg border-2 border-dashed border-border-color text-text-secondary hover:border-brand-primary hover:text-brand-primary transition-all duration-200 h-28"
+              className="flex flex-col items-center justify-center text-center p-3 rounded-lg border-2 border-dashed border-border-color text-text-secondary hover:border-brand-primary hover:text-brand-primary transition-all duration-200 min-h-[144px]"
             >
               <PlusIcon />
               <span className="text-sm font-medium mt-2">New Routine</span>
@@ -153,13 +167,17 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         
         {selectedRoutine ? (
           <div>
-            <h3 className="text-lg font-semibold text-text-primary mb-3">2. Log Your Sets for <span className="text-brand-light">{selectedRoutine.name}</span></h3>
+            <h3 className="text-lg font-semibold text-text-primary mb-3">Your session · <span className="text-brand-light">{selectedRoutine.name}</span></h3>
             <div className="space-y-4">
               {exercises.map(exercise => (
-                 <div key={exercise.name} className="bg-card-dark p-3 sm:p-4 rounded-xl border border-border-color">
-                    <div className="flex justify-between items-start gap-2 mb-3">
-                        <div className="min-w-0">
+                 <div key={exercise.name} className="exercise-card">
+                    <div className="exercise-card-heading">
+                        <div className="exercise-thumbnail"><ExerciseArtwork name={exercise.name} /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="eyebrow mb-1">{getExerciseDetails(exercise.name).category}</p>
                           <h4 className="text-base font-semibold text-brand-light">{exercise.name}</h4>
+                          <p className="text-sm text-text-secondary mt-1 leading-relaxed">{getExerciseDetails(exercise.name).description}</p>
+                          <div className="mt-2"><ExerciseMuscles name={exercise.name} /></div>
                           {lastTime[exercise.name] && (
                             <p className="text-xs text-text-secondary mt-0.5">
                               Last time ({new Date(lastTime[exercise.name].date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}):{' '}
@@ -170,16 +188,13 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
                         <button 
                           onClick={() => handleShowInstructions(exercise.name)} 
                           className="shrink-0 h-10 w-10 -mr-2 -mt-2 flex items-center justify-center rounded-full text-text-secondary hover:text-brand-light transition-colors"
-                          aria-label={`Get instructions for ${exercise.name}`}
-                          title="Get instructions"
+                          aria-label={`View exercise guide for ${exercise.name}`}
+                          title="View exercise guide"
                         >
                             <InfoIcon />
                         </button>
                     </div>
-                    <ExerciseLogger 
-                      exercise={exercise}
-                      onSetChange={handleSetChange}
-                    />
+                    <div className="p-4 sm:p-5"><ExerciseLogger exercise={exercise} onSetChange={handleSetChange} /></div>
                 </div>
               ))}
                <button
@@ -192,8 +207,10 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
             </div>
           </div>
         ) : (
-             <div className="text-center p-8 border-2 border-dashed border-border-color rounded-lg">
-                <p className="text-text-secondary">Select a routine above to start logging your sets.</p>
+             <div className="empty-session">
+                <span className="routine-symbol mx-auto mb-4">＋</span>
+                <h3 className="font-semibold text-lg mb-2">Your next great session starts here</h3>
+                <p className="text-sm text-text-secondary">Pick a routine above, or build one with your favorite exercises.</p>
             </div>
         )}
 

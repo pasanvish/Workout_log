@@ -4,8 +4,43 @@
 
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(20px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 1; transform: none; }
 }
 .animate-fade-in-up {
-  animation: fade-in-up 0.3s ease-out forwards;
+  animation: fade-in-up 0.3s ease-out;
+}
+
+@layer base {
+  body { background-image: radial-gradient(ellipse at 15% 0%, #12332d55, transparent 45%); min-width: 320px; }
+  button, input, select { -webkit-tap-highlight-color: transparent; }
+  button { touch-action: manipulation; }
+  button:focus-visible, a:focus-visible { outline: 2px solid #75ebc9; outline-offset: 4px; }
+  input:focus-visible, select:focus-visible { outline: 2px solid #75ebc9; outline-offset: 2px; }
+  ::selection { background: #087f70; color: white; }
+}
+@layer components {
+  .eyebrow { @apply text-[10px] sm:text-[11px] font-bold uppercase tracking-[.16em] text-brand-light; }
+  .workout-hero { @apply flex items-center justify-between gap-4 overflow-hidden rounded-3xl border border-border-color p-6 sm:p-10; background: linear-gradient(115deg, #192f32, #121c24 70%); }
+  .hero-pill { @apply inline-flex mt-3 rounded-full px-3 py-1.5 text-xs font-medium text-brand-light border border-brand-primary/20 bg-brand-primary/10; }
+  .stat-card { @apply flex flex-col rounded-2xl bg-background-light border border-border-color/70 p-3 sm:p-5; }
+  .routine-card { @apply flex flex-col items-start text-left p-4 rounded-2xl border border-border-color bg-background-light transition-colors min-h-[144px] hover:border-brand-primary; }
+  .routine-card.is-selected, .picker-card.is-selected { @apply border-brand-primary bg-brand-primary/10; }
+  .routine-symbol { @apply flex h-9 w-9 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-light text-xl; }
+  .exercise-card { @apply overflow-hidden rounded-2xl border border-border-color/80 bg-background-light shadow-lg; }
+  .exercise-card-heading { @apply flex items-start gap-3 sm:gap-4 p-4 sm:p-5 border-b border-border-color/60; }
+  .exercise-thumbnail { @apply w-20 sm:w-28 shrink-0; }
+  .exercise-art { @apply block w-full aspect-square h-auto object-contain rounded-xl bg-background-dark; }
+  .exercise-art-placeholder { @apply grid place-items-center text-brand-light bg-brand-primary/10; }
+  .hero-art { @apply w-24 sm:w-32 shrink-0; }
+  .guide-art { @apply mx-auto max-w-[260px]; }
+  .empty-session { @apply text-center p-8 sm:p-12 rounded-2xl border border-dashed border-border-color bg-background-light/50; }
+  .picker-card { @apply flex items-center gap-3 text-left p-3 rounded-xl border border-border-color bg-background-dark transition-colors hover:border-brand-primary; }
+  .picker-art { @apply w-16 sm:w-[72px] shrink-0 rounded-lg; }
+  .guide-summary { @apply rounded-2xl border border-border-color bg-background-dark p-4; }
+}
+@media (max-width: 380px) {
+  .exercise-thumbnail { width: 64px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

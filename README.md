@@ -76,3 +76,16 @@ Contributions, issues, and feature requests are welcome! Feel free to check the 
 ## 📄 License
 
 This project is licensed under the MIT License.
+
+
+### Interface and Android updates
+
+The web and Android apps share the React interface. The 61 built-in exercise cards display bundled illustrations, short descriptions, and primary and secondary muscle targets. Exercise guides show multiple positions where available.
+
+Exercise data by [RepDB (repdb.co)](https://repdb.co), used in the app under the [RepDB Free Tier License](https://github.com/RepDB/exercise-dataset/blob/main/LICENSE-DATA.md). Overhead press and triceps dip artwork by [Bryl Lim and Everkinetic](https://github.com/bryllim/workout-guide), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) and converted to WebP for this app.
+
+- `npm run typecheck` checks TypeScript.
+- `npm run android:sync` builds the web interface and copies it into the Android project.
+- `npm run android:build` also builds a release APK locally (requires Java 21 and the Android SDK). Supply the existing signing environment variables to create an update compatible with installed copies.
+
+The Android APK workflow now runs for interface changes on pull requests and pushes to `main`, as well as version tags and manual runs. GitHub builds use the repository's existing signing secrets. Download the `GymLogger-apk` artifact from a successful run, or use the release download for a version tag. Install the signed APK over the existing app to retain local data; syncing assets alone does not update an installed app.

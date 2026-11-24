@@ -2,9 +2,11 @@ name: Android APK
 
 on:
   pull_request:
-    paths: ['android/**', 'capacitor.config.ts', 'package*.json', '.github/workflows/android.yml']
+    paths: ['android/**', 'capacitor.config.ts', 'package*.json', '.github/workflows/android.yml', '*.tsx', '*.ts', '*.css', 'index.html', 'components/**', 'public/**', '*config.js']
   push:
+    branches: [main]
     tags: ['v*']
+    paths: ['android/**', 'capacitor.config.ts', 'package*.json', '.github/workflows/android.yml', '*.tsx', '*.ts', '*.css', 'index.html', 'components/**', 'public/**', '*config.js']
   workflow_dispatch:
 
 permissions:
@@ -24,6 +26,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      - run: npm run typecheck
       - run: npm run build
       - run: npx cap sync android
 

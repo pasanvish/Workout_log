@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'io.github.pasanvish.gymlogger',
   appName: 'Gym Logger',
   webDir: 'dist',
-  backgroundColor: '#111827',
+  backgroundColor: '#0b1116',
 };
 
 export default config;
