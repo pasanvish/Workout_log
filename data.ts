@@ -1,23 +1,21 @@
+import { isTrackingMode, recordCandidate, trackingOf } from './setTracking.ts';
 import { cleanAppearance } from './profile.ts';
 import type { WorkoutLog, ProfilePRs, CustomRoutine, CustomExercise, BodyMeasurementLog, ProfileAppearance } from './types';
 
 const byDateDesc = (a: { date: string }, b: { date: string }) =>
   new Date(b.date).getTime() - new Date(a.date).getTime();
 
-/** Rebuild PRs (best weight per exercise per rep count) and each set's isPR flag from scratch. */
+/** Rebuild records in chronological order so deletions and edits update historical flags. */
 export function recomputePRs(logs: WorkoutLog[]): { logs: WorkoutLog[]; prs: ProfilePRs } {
   const prs: ProfilePRs = Object.create(null);
   const oldestFirst = [...logs].sort(byDateDesc).reverse().map(log => ({
     ...log,
-    exercises: log.exercises.map(ex => ({
-      ...ex,
-      sets: ex.sets.map(set => {
-        const weight = parseFloat(set.weight);
-        const reps = parseInt(set.reps, 10);
-        if (!(weight > 0 && reps > 0)) return { ...set, isPR: false };
-        const best = prs[ex.name]?.[reps]?.weight ?? 0;
-        if (weight <= best) return { ...set, isPR: false };
-        (prs[ex.name] ??= {})[reps] = { weight, date: log.date };
+    exercises: log.exercises.map(exercise => ({
+      ...exercise,
+      sets: exercise.sets.map(set => {
+        const candidate = recordCandidate(set, trackingOf(exercise));
+        if (!candidate || candidate.value <= (prs[exercise.name]?.[candidate.key]?.value ?? 0)) return { ...set, isPR: false };
+        (prs[exercise.name] ??= Object.create(null))[candidate.key] = { value: candidate.value, date: log.date };
         return { ...set, isPR: true };
       }),
     })),
@@ -27,7 +25,7 @@ export function recomputePRs(logs: WorkoutLog[]): { logs: WorkoutLog[]; prs: Pro
 
 export interface Backup {
   app: 'gym-weight-logger';
-  version: 2;
+  version: 3;
   exportedAt: string;
   profileName: string;
   profileAppearance?: ProfileAppearance;
@@ -57,9 +55,10 @@ function parseLogs(value: unknown): WorkoutLog[] {
         const set = record(entry);
         const weight = numericText(set.weight);
         const reps = numericText(set.reps);
-        return weight || reps ? [{ id: text(set.id) ? set.id : `set-${index}`, weight, reps }] : [];
+        const seconds = numericText(set.seconds);
+        return weight || reps || seconds ? [{ id: text(set.id) ? set.id : `set-${index}`, weight, reps, ...(seconds ? { seconds } : {}) }] : [];
       });
-      return sets.length ? [{ name: exercise.name, sets }] : [];
+      return sets.length ? [{ name: exercise.name, sets, ...(isTrackingMode(exercise.tracking) ? { tracking: exercise.tracking } : {}) }] : [];
     });
     if (!exercises.length) return [];
     const effort = typeof log.effort === 'number' && Number.isInteger(log.effort) && log.effort >= 1 && log.effort <= 5
@@ -83,7 +82,7 @@ export function parseBackup(data: unknown): Parsed | null {
     }),
     customExercises: arr(obj.customExercises).flatMap(entry => {
       const item = record(entry);
-      return text(item.id) && text(item.name) && text(item.category) ? [{ id: item.id, name: item.name, category: item.category }] : [];
+      return text(item.id) && text(item.name) && text(item.category) ? [{ id: item.id, name: item.name, category: item.category, ...(isTrackingMode(item.tracking) ? { tracking: item.tracking } : {}) }] : [];
     }),
     bodyMeasurements: arr(obj.bodyMeasurements).flatMap(entry => {
       const item = record(entry);
@@ -96,7 +95,7 @@ export function parseBackup(data: unknown): Parsed | null {
       return [log];
     }),
   };
-  const recognized = 'app' in obj && obj.app === 'gym-weight-logger' && 'version' in obj && obj.version === 2;
+  const recognized = 'app' in obj && obj.app === 'gym-weight-logger' && 'version' in obj && (obj.version === 2 || obj.version === 3);
   if (recognized && 'profileAppearance' in obj) parsed.profileAppearance = cleanAppearance(obj.profileAppearance);
   const total = parsed.workoutLogs.length + parsed.customRoutines.length + parsed.customExercises.length + parsed.bodyMeasurements.length;
   const hasEmptyBackup = recognized && ['workoutLogs', 'customRoutines', 'customExercises', 'bodyMeasurements'].every(key =>
@@ -127,12 +126,12 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('data.ts')) {
   });
   const logs = [log('c', '2025-01-03', '90'), log('a', '2025-01-01', '80'), log('b', '2025-01-02', '100')];
   let r = recomputePRs(logs);
-  assert(r.prs.Squat['5'].weight === 100, 'best 5RM is 100');
+  assert(r.prs.Squat['5'].value === 100, 'best 5RM is 100');
   assert(r.logs.map(l => l.id).join() === 'c,b,a', 'newest first');
   assert(r.logs[2].exercises[0].sets[0].isPR && r.logs[1].exercises[0].sets[0].isPR, '80 then 100 are PRs');
   assert(!r.logs[0].exercises[0].sets[0].isPR, '90 after 100 is not a PR');
   r = recomputePRs(logs.filter(l => l.id !== 'b')); // delete the 100 session
-  assert(r.prs.Squat['5'].weight === 90 && r.logs[0].exercises[0].sets[0].isPR, 'PR falls back to 90');
+  assert(r.prs.Squat['5'].value === 90 && r.logs[0].exercises[0].sets[0].isPR, 'PR falls back to 90');
   assert(mergeById([{ id: '1', v: 'old' }], [{ id: '1', v: 'new' }, { id: '2', v: 'x' }]).map(x => x.v).join() === 'old,x', 'merge keeps existing');
   assert(parseBackup([log('a', '2025-01-01', '80')])?.workoutLogs.length === 1, 'old array format');
   assert(parseBackup({ bodyMeasurements: [{ id: 'm', date: '2025-01-01' }] })?.bodyMeasurements.length === 1, 'new format');
@@ -141,5 +140,20 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('data.ts')) {
   assert(parseBackup(empty) !== null, 'a clean profile backup can be restored');
   assert(parseBackup({ ...empty, workoutLogs: [{ ...log('a', '2025-01-01', '80'), exercises: [null] }] }) === null, 'malformed nested workouts are rejected');
   assert(mergeById([], [{ id: 'new' }, { id: 'new' }]).length === 1, 'duplicates inside an import are ignored');
+  const mixed: WorkoutLog = {
+    id: 'mixed', date: '2025-01-04', routineName: 'Mixed',
+    exercises: [
+      { name: 'Plank', tracking: 'duration', sets: [{ id: 'p', weight: '', reps: '', seconds: '45' }] },
+      { name: 'Push-ups', tracking: 'bodyweight', sets: [{ id: 'b', weight: '', reps: '12' }, { id: 'w', weight: '5', reps: '12' }] },
+    ],
+  };
+  const restored = parseBackup({ ...empty, version: 3, workoutLogs: [mixed] });
+  assert(restored?.workoutLogs[0].exercises[0].sets[0].seconds === '45', 'duration survives backup import');
+  const records = recomputePRs(restored!.workoutLogs).prs;
+  assert(records.Plank.duration.value === 45, 'longest hold records duration');
+  assert(records['Push-ups'].bodyweight.value === 12 && records['Push-ups']['added:12'].value === 5, 'bodyweight rep and added-load records stay separate');
+  const legacyPlank = { ...mixed, id: 'legacy', exercises: [{ name: 'Plank', sets: [{ id: 'p', weight: '10', reps: '8' }] }] };
+  const legacyRecords = recomputePRs([legacyPlank, mixed]).prs.Plank;
+  assert(legacyRecords['8'].value === 10 && legacyRecords.duration.value === 45, 'legacy plank weights are not reassigned to seconds');
   console.log('data.ts: all checks passed');
 }

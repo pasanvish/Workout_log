@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { formatSet, isCompleteSet, trackingOf } from './setTracking.ts';
 import type { WorkoutLog } from './types';
 
 interface ExportFile {
@@ -40,8 +41,9 @@ export function workoutReport(profileName: string, logs: WorkoutLog[]) {
     const date = new Date(log.date).toLocaleDateString(undefined, { dateStyle: 'long' });
     const effort = Number.isInteger(log.effort) && log.effort >= 1 && log.effort <= 5 ? ` · Effort ${log.effort}/5` : '';
     const exercises = log.exercises.map(exercise => {
-      const sets = exercise.sets.filter(set => set.weight && set.reps).map(set =>
-        `<li>${escape(set.weight)} kg × ${escape(set.reps)} reps ${set.isPR ? '<strong>PR</strong>' : ''}</li>`,
+      const mode = trackingOf(exercise);
+      const sets = exercise.sets.filter(set => isCompleteSet(set, mode)).map(set =>
+        `<li>${escape(formatSet(set, mode))} ${set.isPR ? '<strong>PR</strong>' : ''}</li>`,
       ).join('');
       return `<h3>${escape(exercise.name)}</h3><ul>${sets}</ul>`;
     }).join('');

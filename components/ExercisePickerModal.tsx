@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { CustomExercise, Exercise } from '../types';
+import { CustomExercise, Exercise, TrackingMode } from '../types';
 import ExerciseLibrary from './ExerciseLibrary';
 import ModalFrame from './ModalFrame';
 import CreateExerciseModal from './CreateExerciseModal';
@@ -49,8 +49,8 @@ const ExercisePickerModal: React.FC<ExercisePickerModalProps> = ({ isOpen, onClo
     onClose();
   };
 
-  const handleCreateExerciseSave = (name: string, category: string) => {
-    const newExercise = onAddCustomExercise({ name, category });
+  const handleCreateExerciseSave = (name: string, category: string, tracking: TrackingMode) => {
+    const newExercise = onAddCustomExercise({ name, category, tracking });
     handleToggleExercise(newExercise.name);
     setCreateExerciseModalOpen(false);
   };

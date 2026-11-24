@@ -17,6 +17,8 @@ A sleek, modern, and offline-first web application to log your gym training sess
 - **Progress Visualization**: Track your strength gains with an interactive line chart that visualizes your max weight for any exercise over time.
 - **Responsive Design**: Fully optimized for both desktop and mobile devices, so you can log your workout right at the gym.
 - **Offline First**: All data is stored directly in your browser's `localStorage`. The app works entirely offline, and your data never leaves your device.
+- **Flexible set logging**: Track weighted sets, bodyweight reps with optional added load, and timed holds. Planks have a stopwatch, and the rest timer stays available during the workout.
+- **Repeat a workout**: Start from your last exercise list and set counts. Previous results appear as references while you log new sets.
 - **Data Portability**: Easily import and export your entire workout history as a JSON file for backup or migration.
 - **Pre-defined Routines**: Comes with a pre-configured list of common exercises for "Biceps, Triceps & Shoulders", "Chest & Back", and "Legs" days.
 

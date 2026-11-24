@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { MASTER_EXERCISE_LIST } from '../constants';
-import { CustomExercise } from '../types';
+import { CustomExercise, TrackingMode } from '../types';
+import { isTrackingMode, TRACKING_LABELS } from '../setTracking';
 import ModalFrame from './ModalFrame';
 
 interface CreateExerciseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string, category: string) => void;
+  onSave: (name: string, category: string, tracking: TrackingMode) => void;
   initialValue?: string;
   customExercises: CustomExercise[];
 }
@@ -15,6 +16,7 @@ function CreateExerciseForm({ onClose, onSave, initialValue = '', customExercise
   const [exerciseName, setExerciseName] = useState(initialValue);
   const categories = Object.keys(MASTER_EXERCISE_LIST);
   const [category, setCategory] = useState(categories[0]);
+  const [tracking, setTracking] = useState<TrackingMode>('weight');
   const trimmed = exerciseName.trim();
   const duplicate = trimmed && [
     ...Object.values(MASTER_EXERCISE_LIST).flat(),
@@ -31,7 +33,7 @@ function CreateExerciseForm({ onClose, onSave, initialValue = '', customExercise
     }>
       <form id="custom-exercise-form" className="space-y-4" onSubmit={event => {
         event.preventDefault();
-        if (trimmed && !duplicate) onSave(trimmed, category);
+        if (trimmed && !duplicate) onSave(trimmed, category, tracking);
       }}>
         <label className="block text-xs font-semibold text-text-secondary">
           Exercise name
@@ -43,6 +45,14 @@ function CreateExerciseForm({ onClose, onSave, initialValue = '', customExercise
           Category
           <select className="track-input mt-1.5 w-full" value={category} onChange={event => setCategory(event.target.value)}>
             {categories.map(label => <option key={label} value={label}>{label}</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-text-secondary">
+          Logging type
+          <select className="track-input mt-1.5 w-full" value={tracking} onChange={event => {
+            if (isTrackingMode(event.target.value)) setTracking(event.target.value);
+          }}>
+            {Object.entries(TRACKING_LABELS).map(([mode, label]) => <option key={mode} value={mode}>{label}</option>)}
           </select>
         </label>
       </form>

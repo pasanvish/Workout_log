@@ -6,10 +6,11 @@ import ProfileAvatar from './components/ProfileAvatar';
 import ProfileSettings from './components/ProfileSettings';
 import type { HistoryView } from './components/WorkoutHistory';
 import { BADGES } from './badges';
+import { formatRecord, recordCandidate, trackingOf } from './setTracking';
 import { cleanAppearance } from './profile';
 import { exportName, saveExport } from './exports';
 import PRNotificationModal from './components/PRNotificationModal';
-import { WorkoutLog, Profile, CustomRoutine, CustomExercise, AllPRs, BodyMeasurementLog, Badge } from './types';
+import { WorkoutLog, Profile, CustomRoutine, CustomExercise, BodyMeasurementLog, Badge } from './types';
 import BodyMeasurements from './components/BodyMeasurements';
 import { Capacitor } from '@capacitor/core';
 
@@ -32,10 +33,9 @@ const App: React.FC = () => {
   const [workoutLogs, setWorkoutLogs] = useState<Record<string, WorkoutLog[]>>({});
   const [customRoutines, setCustomRoutines] = useState<Record<string, CustomRoutine[]>>({});
   const [customExercises, setCustomExercises] = useState<Record<string, CustomExercise[]>>({});
-  const [personalRecords, setPersonalRecords] = useState<AllPRs>({});
   const [bodyMeasurements, setBodyMeasurements] = useState<Record<string, BodyMeasurementLog[]>>({});
   
-  const [newlySetPRs, setNewlySetPRs] = useState<Array<{exerciseName: string; weight: string; reps: string}>>([]);
+  const [newlySetPRs, setNewlySetPRs] = useState<Array<{ exerciseName: string; label: string; value: string }>>([]);
   const [isAppReady, setIsAppReady] = useState(false);
   const [activeTab, setActiveTab] = useState<'logger' | 'measurements'>('logger');
   const [showAndroidBanner, setShowAndroidBanner] = useState(() => {
@@ -56,7 +56,6 @@ const App: React.FC = () => {
       const savedWorkoutLogs = JSON.parse(localStorage.getItem('workoutLogs') || '{}');
       const savedCustomRoutines = JSON.parse(localStorage.getItem('customRoutines') || '{}');
       const savedCustomExercises = JSON.parse(localStorage.getItem('customExercises') || '{}');
-      const savedPersonalRecords = JSON.parse(localStorage.getItem('personalRecords') || '{}');
       const savedBodyMeasurements = JSON.parse(localStorage.getItem('bodyMeasurements') || '{}');
 
       setProfiles(savedProfiles.map(({ id, name, ...appearance }: Profile) => ({ id, name, ...cleanAppearance(appearance) })));
@@ -64,7 +63,6 @@ const App: React.FC = () => {
       setWorkoutLogs(savedWorkoutLogs);
       setCustomRoutines(savedCustomRoutines);
       setCustomExercises(savedCustomExercises);
-      setPersonalRecords(savedPersonalRecords);
       setBodyMeasurements(savedBodyMeasurements);
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
@@ -81,66 +79,42 @@ const App: React.FC = () => {
       localStorage.setItem('workoutLogs', JSON.stringify(workoutLogs));
       localStorage.setItem('customRoutines', JSON.stringify(customRoutines));
       localStorage.setItem('customExercises', JSON.stringify(customExercises));
-      localStorage.setItem('personalRecords', JSON.stringify(personalRecords));
       localStorage.setItem('bodyMeasurements', JSON.stringify(bodyMeasurements));
     } catch (error) {
       console.error("Failed to save data to localStorage", error);
     }
-  }, [profiles, activeProfileId, workoutLogs, customRoutines, customExercises, personalRecords, bodyMeasurements, isAppReady]);
+  }, [profiles, activeProfileId, workoutLogs, customRoutines, customExercises, bodyMeasurements, isAppReady]);
 
   const activeProfile = useMemo(() => profiles.find(p => p.id === activeProfileId), [profiles, activeProfileId]);
-  const activeLogs = useMemo(() => (activeProfileId && workoutLogs[activeProfileId]) || [], [workoutLogs, activeProfileId]);
+  const { logs: activeLogs, prs: activePRs } = useMemo(
+    () => recomputePRs((activeProfileId && workoutLogs[activeProfileId]) || []),
+    [workoutLogs, activeProfileId],
+  );
   const activeRoutines = useMemo(() => (activeProfileId && customRoutines[activeProfileId]) || [], [customRoutines, activeProfileId]);
   const activeCustomExercises = useMemo(() => (activeProfileId && customExercises[activeProfileId]) || [], [customExercises, activeProfileId]);
-  const activePRs = useMemo(() => (activeProfileId && personalRecords[activeProfileId]) || {}, [personalRecords, activeProfileId]);
   const activeBodyMeasurements = useMemo(() => (activeProfileId && bodyMeasurements[activeProfileId]) || [], [bodyMeasurements, activeProfileId]);
   
   const addWorkoutLog = useCallback((log: WorkoutLog) => {
     if (!activeProfileId) return;
-
-    const currentPRs = personalRecords[activeProfileId] || {};
-    const updatedPRs = Object.assign(Object.create(null), JSON.parse(JSON.stringify(currentPRs))) as typeof currentPRs;
-    const newPRsThisSession: Array<{ exerciseName: string; weight: string; reps: string }> = [];
-    let prsUpdated = false;
-
-    const logWithPRs: WorkoutLog = {
-      ...log,
-      exercises: log.exercises.map(ex => ({
-        ...ex,
-        sets: ex.sets.map(set => {
-          const weight = parseFloat(set.weight);
-          const reps = parseInt(set.reps, 10);
-
-          if (!isNaN(weight) && !isNaN(reps) && weight > 0 && reps > 0) {
-            const existingPRWeight = updatedPRs[ex.name]?.[reps]?.weight || 0;
-            if (weight > existingPRWeight) {
-              if (!updatedPRs[ex.name]) {
-                updatedPRs[ex.name] = {};
-              }
-              updatedPRs[ex.name][reps] = { weight, date: log.date };
-              newPRsThisSession.push({ exerciseName: ex.name, ...set });
-              prsUpdated = true;
-              return { ...set, isPR: true };
-            }
-          }
-          return { ...set, isPR: false };
-        })
-      }))
-    };
-    
-    if (prsUpdated) {
-      setPersonalRecords(prev => ({ ...prev, [activeProfileId]: updatedPRs }));
+    const { logs: updated, prs: records } = recomputePRs([log, ...activeLogs]);
+    const improvements = new Map<string, { exerciseName: string; label: string; value: string }>();
+    for (const exercise of log.exercises) {
+      for (const set of exercise.sets) {
+        const candidate = recordCandidate(set, trackingOf(exercise));
+        if (!candidate) continue;
+        if (candidate.value !== records[exercise.name]?.[candidate.key]?.value) continue;
+        if (candidate.value <= (activePRs[exercise.name]?.[candidate.key]?.value ?? 0)) continue;
+        improvements.set(`${exercise.name}:${candidate.key}`, {
+          exerciseName: exercise.name, ...formatRecord(candidate.key, candidate.value),
+        });
+      }
     }
-
-    const previousLogs = workoutLogs[activeProfileId] || [];
-    const newLogs = [logWithPRs, ...previousLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    setWorkoutLogs(prev => ({ ...prev, [activeProfileId]: newLogs }));
-    
-    setNewlySetPRs(newPRsThisSession);
-    setNewBadges(BADGES.filter(badge => !badge.isEarned(previousLogs) && badge.isEarned(newLogs)));
+    setWorkoutLogs(previous => ({ ...previous, [activeProfileId]: updated }));
+    setNewlySetPRs([...improvements.values()]);
+    setNewBadges(BADGES.filter(badge => !badge.isEarned(activeLogs) && badge.isEarned(updated)));
     setHistoryView('Sessions');
     setIsHistoryDrawerOpen(true);
-  }, [activeProfileId, workoutLogs, personalRecords]);
+  }, [activeProfileId, activeLogs, activePRs]);
 
   const addBodyMeasurement = useCallback((log: Omit<BodyMeasurementLog, 'id'>) => {
     if (!activeProfileId) return;
@@ -150,9 +124,7 @@ const App: React.FC = () => {
   }, [activeProfileId, bodyMeasurements]);
 
   const replaceLogs = useCallback((profileId: string, logs: WorkoutLog[]) => {
-    const { logs: flagged, prs } = recomputePRs(logs);
-    setWorkoutLogs(prev => ({ ...prev, [profileId]: flagged }));
-    setPersonalRecords(prev => ({ ...prev, [profileId]: prs }));
+    setWorkoutLogs(prev => ({ ...prev, [profileId]: logs }));
   }, []);
 
   const deleteWorkoutLog = useCallback((logId: string) => {
@@ -196,7 +168,7 @@ const App: React.FC = () => {
     if (!activeProfile) return Promise.resolve(false);
     const backup: Backup = {
       app: 'gym-weight-logger',
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       profileName: activeProfile.name,
       profileAppearance: cleanAppearance(activeProfile),

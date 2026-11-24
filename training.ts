@@ -1,3 +1,4 @@
+import { isCompleteSet, trackingOf } from './setTracking.ts';
 import type { WorkoutLog } from './types';
 
 export function localLogDate(value: string) {
@@ -12,9 +13,8 @@ export function weekStart(value: Date) {
 }
 
 export function completedSetCount(log: WorkoutLog) {
-  return log.exercises.reduce((count, exercise) => count + exercise.sets.filter(set =>
-    String(set.weight ?? '').trim() !== '' && Number.isFinite(Number(set.weight)) && Number(set.reps) > 0,
-  ).length, 0);
+  return log.exercises.reduce((count, exercise) =>
+    count + exercise.sets.filter(set => isCompleteSet(set, trackingOf(exercise))).length, 0);
 }
 
 export function longestTrainingStreak(logs: WorkoutLog[]) {

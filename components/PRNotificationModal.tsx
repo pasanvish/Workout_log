@@ -1,4 +1,5 @@
 import React from 'react';
+import BadgeEmblem from './BadgeEmblem';
 import ExerciseArtwork from './ExerciseArtwork';
 import ModalFrame from './ModalFrame';
 import type { Badge } from '../types';
@@ -7,7 +8,7 @@ interface PRNotificationModalProps {
   isOpen: boolean;
   onClose: () => void;
   badges: Badge[];
-  prs: Array<{ exerciseName: string; weight: string; reps: string }>;
+  prs: Array<{ exerciseName: string; label: string; value: string }>;
 }
 
 export default function PRNotificationModal({ isOpen, onClose, prs, badges }: PRNotificationModalProps) {
@@ -23,16 +24,16 @@ export default function PRNotificationModal({ isOpen, onClose, prs, badges }: PR
       <ul className="grid gap-2.5">
         {badges.map(badge => (
           <li key={badge.id} className="flex items-center gap-3 rounded-2xl border border-brand-primary/40 bg-brand-primary/10 p-3">
-            <span className="session-date" aria-hidden="true"><badge.icon className="size-6" /></span>
+            <BadgeEmblem badge={badge} />
             <div><p className="text-sm font-semibold">{badge.name}</p><p className="mt-1 text-xs text-text-secondary">{badge.description}</p></div>
           </li>
         ))}
-        {prs.map(({ exerciseName, weight, reps }, index) => (
+        {prs.map(({ exerciseName, label, value }, index) => (
           <li key={index} className="flex items-center gap-3 rounded-2xl border border-yellow-300/30 bg-yellow-300/5 p-3">
             <ExerciseArtwork name={exerciseName} className="!w-12 shrink-0 !rounded-lg" />
             <div className="min-w-0 flex-1">
               <p className="break-words text-sm font-semibold">{exerciseName}</p>
-              <p className="mt-1 text-sm tabular-nums text-yellow-200">{weight} kg × {reps} {reps === '1' ? 'rep' : 'reps'}</p>
+              <p className="mt-1 text-sm tabular-nums text-yellow-200">{value} · {label}</p>
             </div>
             <span className="rounded-full border border-yellow-300/30 px-2 py-1 text-xs font-bold text-yellow-200">PR</span>
           </li>

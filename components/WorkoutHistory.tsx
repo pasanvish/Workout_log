@@ -4,6 +4,11 @@ import { WorkoutLog, Profile, ProfilePRs } from '../types';
 import BadgesDisplay from './BadgesDisplay';
 import TrainingProgress from './TrainingProgress';
 import ExerciseArtwork from './ExerciseArtwork';
+import SetInputs from './SetInputs';
+import {
+  formatRecord, formatSet, isCompleteSet, PROGRESS_METRICS, progressMetric, recordCandidate, trackingOf,
+  type ProgressMetric, type SetField,
+} from '../setTracking';
 import { EFFORT_LEVELS } from './WorkoutFeedbackModal';
 import { exportName, saveExport, workoutReport } from '../exports';
 
@@ -50,10 +55,9 @@ export type HistoryView = typeof historyViews[number];
 
 const shortDate = (date: string) => new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const fullDate = (date: string) => new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 
 const completedSets = (log: WorkoutLog) => log.exercises.flatMap(exercise =>
-  exercise.sets.filter(set => Number.isFinite(Number(set.weight)) && String(set.weight ?? '').trim() !== '' && Number(set.reps) > 0),
+  exercise.sets.filter(set => isCompleteSet(set, trackingOf(exercise))),
 );
 
 const Chevron = ({ open }: { open: boolean }) => (
@@ -67,12 +71,12 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
   const [fileBusy, setFileBusy] = useState(false);
   const [draft, setDraft] = useState<WorkoutLog | null>(null);
 
-  const editSet = (exIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
+  const editSet = (exIndex: number, setIndex: number, field: SetField, value: string) => {
     setDraft(d => d && {
       ...d,
       exercises: d.exercises.map((ex, i) => i !== exIndex ? ex : {
         ...ex,
-        sets: ex.sets.map((set, j) => j !== setIndex ? set : { ...set, [field]: value.replace(/[^0-9.]/g, '') }),
+        sets: ex.sets.map((set, j) => j !== setIndex ? set : { ...set, [field]: value }),
       }),
     });
   };
@@ -89,6 +93,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
   };
 
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
+  const [selectedMetric, setSelectedMetric] = useState<ProgressMetric>();
   const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string | null>(null);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -127,18 +132,35 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
   const prExercises = useMemo(() => Object.keys(personalRecords).sort(), [personalRecords]);
 
   const exerciseFilter = selectedExercise && uniqueExercises.includes(selectedExercise) ? selectedExercise : uniqueExercises[0];
-  const chartData = useMemo(() => {
-    if (!exerciseFilter) return [];
-    return [...logs].reverse().flatMap(log => {
-      const maxWeight = Math.max(0, ...log.exercises
-        .filter(exercise => exercise.name === exerciseFilter)
-        .flatMap(exercise => exercise.sets.map(set => Number(set.weight)))
-        .filter(Number.isFinite));
-      return maxWeight > 0 ? [{ date: log.date, maxWeight }] : [];
-    });
+  const series = useMemo(() => {
+    const result = new Map<ProgressMetric, { date: string; value: number }[]>();
+    if (!exerciseFilter) return result;
+    for (const log of [...logs].reverse()) {
+      const best = new Map<ProgressMetric, number>();
+      for (const exercise of log.exercises) {
+        if (exercise.name !== exerciseFilter) continue;
+        const mode = trackingOf(exercise);
+        for (const set of exercise.sets) {
+          const candidate = recordCandidate(set, mode);
+          if (!candidate) continue;
+          const metric = progressMetric(candidate.key);
+          best.set(metric, Math.max(best.get(metric) ?? 0, candidate.value));
+        }
+      }
+      for (const [metric, value] of best) {
+        const points = result.get(metric) ?? [];
+        points.push({ date: log.date, value });
+        result.set(metric, points);
+      }
+    }
+    return result;
   }, [logs, exerciseFilter]);
+  const metric = selectedMetric && series.has(selectedMetric) ? selectedMetric
+    : [...series.keys()].sort((a, b) => Date.parse(series.get(b)!.at(-1)!.date) - Date.parse(series.get(a)!.at(-1)!.date))[0];
+  const metricInfo = metric ? PROGRESS_METRICS[metric] : undefined;
+  const chartData = metric ? series.get(metric)! : [];
   const latestPoint = chartData.at(-1);
-  const strongestWeight = Math.max(0, ...chartData.map(point => point.maxWeight));
+  const bestValue = chartData.reduce((best, point) => Math.max(best, point.value), 0);
   const allSetCount = useMemo(() => logs.reduce((sum, log) => sum + completedSets(log).length, 0), [logs]);
   const recordCount = prExercises.reduce((sum, exercise) => sum + Object.keys(personalRecords[exercise]).length, 0);
   const monthGroups = useMemo(() => {
@@ -273,13 +295,12 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                                       <li key={set.id} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-background-light px-2.5 py-2 text-xs">
                                         <span className="text-text-secondary">Set {setIndex + 1}</span>
                                         {editing ? (
-                                          <span className="ml-auto flex items-center gap-1.5">
-                                            <input type="text" inputMode="decimal" value={set.weight} onChange={event => editSet(exIndex, setIndex, 'weight', event.target.value)} className="track-input w-16 text-right" aria-label={`${exercise.name} set ${setIndex + 1} weight in kg`} />
-                                            <span className="text-text-secondary">kg ×</span>
-                                            <input type="text" inputMode="numeric" value={set.reps} onChange={event => editSet(exIndex, setIndex, 'reps', event.target.value)} className="track-input w-12 text-right" aria-label={`${exercise.name} set ${setIndex + 1} reps`} />
-                                          </span>
+                                          <div className="ml-auto w-full max-w-[200px]">
+                                            <SetInputs exerciseName={exercise.name} set={set} index={setIndex} mode={trackingOf(exercise)} showLabels
+                                              onChange={(field, value) => editSet(exIndex, setIndex, field, value)} />
+                                          </div>
                                         ) : (
-                                          <span className="font-medium tabular-nums">{set.weight || '–'} kg × {set.reps || '–'} {set.isPR && <span className="ml-1 text-yellow-300">PR</span>}</span>
+                                          <span className="font-medium tabular-nums">{formatSet(set, trackingOf(exercise))} {set.isPR && <span className="ml-1 text-yellow-300">PR</span>}</span>
                                         )}
                                       </li>
                                     ))}
@@ -318,36 +339,42 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
           <div className="space-y-4">
             <TrainingProgress logs={logs} />
             <section className="tracking-panel">
-              <h3 className="text-lg font-semibold">Strength over time</h3>
-              <p className="mt-1 text-sm text-text-secondary">Heaviest set for each session.</p>
+              <h3 className="text-lg font-semibold">Exercise progress</h3>
+              <p className="mt-1 text-sm text-text-secondary">{metricInfo?.description ?? 'Track weight, bodyweight reps, or hold duration.'}</p>
               {uniqueExercises.length > 0 ? (
                 <>
                   <label htmlFor="exercise-select" className="mt-4 block text-xs font-medium text-text-secondary">Exercise</label>
-                  <select id="exercise-select" value={exerciseFilter} onChange={event => setSelectedExercise(event.target.value)} className="track-input mt-1.5 w-full">
+                  <select id="exercise-select" value={exerciseFilter} onChange={event => { setSelectedExercise(event.target.value); setSelectedMetric(undefined); }} className="track-input mt-1.5 w-full">
                     {uniqueExercises.map(exercise => <option key={exercise} value={exercise}>{exercise}</option>)}
                   </select>
-                  {latestPoint && (
+                  {series.size > 1 && (
+                    <div role="group" aria-label="Progress metric" className="mt-3 flex flex-wrap gap-1.5">
+                      {[...series.keys()].map(value => <button type="button" key={value} aria-pressed={metric === value} className="category-chip"
+                        onClick={() => setSelectedMetric(value)}>{PROGRESS_METRICS[value].label}</button>)}
+                    </div>
+                  )}
+                  {latestPoint && metricInfo && (
                     <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="stat-card"><span className="text-xs text-text-secondary">Latest</span><strong className="mt-1 text-xl tabular-nums">{number.format(latestPoint.maxWeight)} kg</strong></div>
-                      <div className="stat-card"><span className="text-xs text-text-secondary">Best</span><strong className="mt-1 text-xl tabular-nums text-brand-light">{number.format(strongestWeight)} kg</strong></div>
+                      <div className="stat-card"><span className="text-xs text-text-secondary">Latest</span><strong className="mt-1 text-xl tabular-nums">{metricInfo.sample(latestPoint.value)}</strong></div>
+                      <div className="stat-card"><span className="text-xs text-text-secondary">Best</span><strong className="mt-1 text-xl tabular-nums text-brand-light">{metricInfo.sample(bestValue)}</strong></div>
                     </div>
                   )}
                   {chartData.length > 1 ? (
-                    <div className="mt-5 h-56 min-w-0" aria-label="Heaviest set by session">
+                    <div className="mt-5 h-56 min-w-0" aria-label={`${metricInfo?.label ?? 'Exercise progress'} by session`}>
                       <ResponsiveContainer>
                         <AreaChart data={chartData} margin={{ top: 8, right: 10, left: -18, bottom: 2 }}>
                           <defs><linearGradient id="strength-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="rgb(var(--brand-light))" stopOpacity={0.28} /><stop offset="100%" stopColor="rgb(var(--brand-light))" stopOpacity={0.02} /></linearGradient></defs>
                           <CartesianGrid vertical={false} stroke="#2c3d49" strokeDasharray="3 4" />
                           <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
                           <YAxis tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} />
-                          <Tooltip labelFormatter={fullDate} formatter={value => [`${value} kg`, 'Heaviest set']} contentStyle={{ background: '#121c24', borderColor: '#2c3d49', borderRadius: 12 }} />
-                          <Area dataKey="maxWeight" type="linear" stroke="rgb(var(--brand-light))" fill="url(#strength-fill)" strokeWidth={2.5} dot={{ r: 3, fill: 'rgb(var(--brand-light))' }} isAnimationActive={false} />
+                          <Tooltip labelFormatter={fullDate} formatter={value => [metricInfo?.sample(Number(value)) ?? value, metricInfo?.label ?? 'Result']} contentStyle={{ background: '#121c24', borderColor: '#2c3d49', borderRadius: 12 }} />
+                          <Area dataKey="value" type="linear" stroke="rgb(var(--brand-light))" fill="url(#strength-fill)" strokeWidth={2.5} dot={{ r: 3, fill: 'rgb(var(--brand-light))' }} isAnimationActive={false} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
-                  ) : <p className="mt-5 rounded-xl bg-background-dark p-4 text-sm text-text-secondary">Log a weight for this exercise in two sessions to see a trend.</p>}
+                  ) : <p className="mt-5 rounded-xl bg-background-dark p-4 text-sm text-text-secondary">Log this type of set in two sessions to see a trend.</p>}
                 </>
-              ) : <p className="mt-5 text-sm text-text-secondary">Log your first workout to start tracking strength.</p>}
+              ) : <p className="mt-5 text-sm text-text-secondary">Log your first workout to start tracking progress.</p>}
             </section>
           </div>
         )}
@@ -356,9 +383,9 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
           <div className="space-y-5">
             <div>
               <h3 className="text-lg font-semibold">Personal records</h3>
-              <p className="mt-1 text-sm text-text-secondary">Your heaviest weight at each rep count.</p>
+              <p className="mt-1 text-sm text-text-secondary">Your heaviest sets, most bodyweight reps, and longest holds.</p>
             </div>
-            {prExercises.length === 0 && <p className="tracking-panel text-sm text-text-secondary">Log a weighted set to start tracking your records.</p>}
+            {prExercises.length === 0 && <p className="tracking-panel text-sm text-text-secondary">Log a set to start tracking your records.</p>}
             {prExercises.map(exercise => (
               <section key={exercise} className="tracking-panel">
                 <div className="mb-4 flex items-center gap-3">
@@ -367,13 +394,16 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                   <MedalIcon />
                 </div>
                 <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {Object.entries(personalRecords[exercise]).sort(([a], [b]) => Number(a) - Number(b)).map(([reps, record]) => (
-                    <li key={reps} className="rounded-xl border border-border-color/60 bg-background-dark p-3">
-                      <span className="text-xs text-text-secondary">{reps} {reps === '1' ? 'rep' : 'reps'}</span>
-                      <strong className="block text-lg tabular-nums text-brand-light">{number.format(record.weight)} kg</strong>
-                      <span className="text-xs text-text-secondary">{fullDate(record.date)}</span>
-                    </li>
-                  ))}
+                  {Object.entries(personalRecords[exercise]).map(([key, record]) => {
+                    const formatted = formatRecord(key, record.value);
+                    return (
+                      <li key={key} className="rounded-xl border border-border-color/60 bg-background-dark p-3">
+                        <span className="text-xs text-text-secondary">{formatted.label}</span>
+                        <strong className="block text-lg tabular-nums text-brand-light">{formatted.value}</strong>
+                        <span className="text-xs text-text-secondary">{fullDate(record.date)}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ))}
