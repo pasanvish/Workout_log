@@ -44,3 +44,25 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+@layer components {
+  .segmented-control { @apply grid shrink-0 auto-cols-fr grid-flow-col gap-1 rounded-xl border border-border-color/70 bg-background-light p-1; }
+  .segmented-control button { @apply min-h-10 rounded-lg px-1 text-sm font-semibold text-text-secondary transition-colors hover:text-text-primary; }
+  .segmented-control button[aria-pressed="true"] { @apply bg-brand-primary/15 text-brand-light; }
+  .tracking-panel { @apply rounded-2xl border border-border-color/80 bg-background-light p-4 sm:p-5; }
+  .track-input { @apply min-h-10 rounded-lg border border-border-color bg-background-dark px-2.5 py-1.5 text-base text-text-primary; }
+  .panel-action { @apply inline-flex min-h-10 items-center justify-center rounded-xl border border-border-color bg-card-dark px-3 text-sm font-semibold text-text-primary hover:border-brand-primary; }
+  .panel-action-primary { @apply border-brand-primary bg-brand-light text-background-dark hover:bg-brand-primary; }
+  .icon-action { @apply flex size-11 shrink-0 items-center justify-center rounded-xl border border-border-color bg-background-dark text-text-secondary hover:text-text-primary; }
+  .session-history-card { @apply overflow-hidden rounded-2xl border border-border-color/80 bg-background-light; }
+  .session-date { @apply flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl bg-brand-primary/10 text-brand-light; }
+  .history-chip { @apply rounded-full border border-border-color/60 bg-background-dark px-2 py-0.5 text-[11px] text-text-secondary; }
+}
+
+.session-progress {
+  @apply block h-2 w-full overflow-hidden rounded-full bg-background-dark;
+  appearance: none;
+}
+.session-progress::-webkit-progress-bar { background: #0b1116; }
+.session-progress::-webkit-progress-value { background: #75ebc9; border-radius: 999px; }
+.session-progress::-moz-progress-bar { background: #75ebc9; border-radius: 999px; }

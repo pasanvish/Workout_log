@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useState, useMemo, useRef } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { WorkoutLog, Profile, ProfilePRs } from '../types';
 import BadgesDisplay from './BadgesDisplay';
+import ExerciseArtwork from './ExerciseArtwork';
 
 interface WorkoutHistoryProps {
   logs: WorkoutLog[];
@@ -47,20 +48,26 @@ const MedalIcon = () => (
   </svg>
 );
 
-const InfoTooltip: React.FC<{text: string}> = ({ text }) => (
-    <div className="relative flex items-center group">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-secondary" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-        </svg>
-        <div className="absolute bottom-full right-0 mb-2 w-60 p-2 bg-card-dark text-text-primary text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-            {text}
-        </div>
-    </div>
+const historyViews = ['Sessions', 'Progress', 'Records'] as const;
+type HistoryView = typeof historyViews[number];
+
+const shortDate = (date: string) => new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const fullDate = (date: string) => new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+
+const completedSets = (log: WorkoutLog) => log.exercises.flatMap(exercise =>
+  exercise.sets.filter(set => Number.isFinite(Number(set.weight)) && String(set.weight ?? '').trim() !== '' && Number(set.reps) > 0),
 );
 
+const Chevron = ({ open }: { open: boolean }) => (
+  <svg aria-hidden="true" className={`size-5 shrink-0 text-text-secondary transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords, onDeleteLog, onUpdateLog }) => {
   const [draft, setDraft] = useState<WorkoutLog | null>(null);
+  const [view, setView] = useState<HistoryView>('Sessions');
 
   const editSet = (exIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
     setDraft(d => d && {
@@ -84,17 +91,10 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
   };
 
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
-  const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string>('all');
+  const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string | null>(null);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [isBadgesExpanded, setIsBadgesExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    // Automatically expand the first (most recent) log when the component loads
-    if (logs.length > 0) {
-      setExpandedLogs(new Set([logs[0].id]));
-    }
-  }, [logs]);
 
   const toggleLogExpansion = (logId: string) => {
     setExpandedLogs(prev => {
@@ -123,30 +123,37 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
   }, [logs]);
 
   const filteredLogs = useMemo(() => {
-    if (selectedRoutineFilter === 'all') return logs;
+    if (selectedRoutineFilter === null || !uniqueRoutines.includes(selectedRoutineFilter)) return logs;
     return logs.filter(log => log.routineName === selectedRoutineFilter);
-  }, [logs, selectedRoutineFilter]);
+  }, [logs, selectedRoutineFilter, uniqueRoutines]);
 
   const prExercises = useMemo(() => Object.keys(personalRecords).sort(), [personalRecords]);
 
+  const exerciseFilter = selectedExercise && uniqueExercises.includes(selectedExercise) ? selectedExercise : uniqueExercises[0];
   const chartData = useMemo(() => {
-    if (!selectedExercise) return [];
-    const data: { date: string; maxWeight: number }[] = [];
-    const relevantLogs = [...logs].reverse().filter(log => log.exercises.some(ex => ex.name === selectedExercise));
-    relevantLogs.forEach(log => {
-        const exercise = log.exercises.find(ex => ex.name === selectedExercise);
-        if (exercise) {
-            const maxWeight = Math.max(...exercise.sets.map(set => parseFloat(set.weight) || 0));
-            if (maxWeight > 0) {
-                data.push({
-                    date: new Date(log.date).toLocaleDateString(),
-                    maxWeight: maxWeight
-                });
-            }
-        }
+    if (!exerciseFilter) return [];
+    return [...logs].reverse().flatMap(log => {
+      const maxWeight = Math.max(0, ...log.exercises
+        .filter(exercise => exercise.name === exerciseFilter)
+        .flatMap(exercise => exercise.sets.map(set => Number(set.weight)))
+        .filter(Number.isFinite));
+      return maxWeight > 0 ? [{ date: log.date, maxWeight }] : [];
     });
-    return data;
-  }, [logs, selectedExercise]);
+  }, [logs, exerciseFilter]);
+  const latestPoint = chartData.at(-1);
+  const strongestWeight = Math.max(0, ...chartData.map(point => point.maxWeight));
+  const allSetCount = useMemo(() => logs.reduce((sum, log) => sum + completedSets(log).length, 0), [logs]);
+  const recordCount = prExercises.reduce((sum, exercise) => sum + Object.keys(personalRecords[exercise]).length, 0);
+  const monthGroups = useMemo(() => {
+    const groups = new Map<string, WorkoutLog[]>();
+    for (const log of filteredLogs) {
+      const month = new Date(log.date).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      const group = groups.get(month);
+      if (group) group.push(log);
+      else groups.set(month, [log]);
+    }
+    return [...groups];
+  }, [filteredLogs]);
 
   const handleImportClick = () => {
       fileInputRef.current?.click();
@@ -245,262 +252,203 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
     URL.revokeObjectURL(url);
   };
   
-  if (logs.length === 0) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="flex justify-between items-center p-4 border-b border-border-color flex-shrink-0">
-            <h2 id="history-drawer-title" className="text-xl font-bold text-text-primary">Workout History</h2>
-            <button onClick={onClose} className="p-2 rounded-full text-text-secondary hover:bg-card-dark hover:text-text-primary transition-colors" aria-label="Close history">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-        </div>
-        <div className="flex-grow flex items-center justify-center text-center p-6">
-            <div>
-              <NoDataIcon />
-              <h2 className="text-2xl font-bold text-text-primary mt-4 mb-2">No Workouts Logged Yet</h2>
-              <p className="text-text-secondary mb-6">Start by logging a workout or import your existing data.</p>
-              <div>
-                  <button onClick={handleImportClick} className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-brand-primary text-white hover:bg-brand-secondary transition-colors shadow-md">
-                      <UploadIcon/>
-                      Import Existing Data
-                  </button>
-                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-              </div>
-            </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full bg-background-light">
-      <div className="flex justify-between items-center p-4 border-b border-border-color flex-shrink-0 bg-background-light sticky top-0 z-10">
-          <h2 id="history-drawer-title" className="text-xl font-bold text-text-primary">Workout History</h2>
-          <button onClick={onClose} className="p-2 rounded-full text-text-secondary hover:bg-card-dark hover:text-text-primary transition-colors" aria-label="Close history">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-      </div>
+    <>
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border-color/60 bg-background-light px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
+        <div className="min-w-0">
+          <h2 id="history-drawer-title" className="text-2xl font-bold tracking-tight">Workout history</h2>
+          {activeProfile && <p className="truncate text-xs text-text-secondary mt-1">{activeProfile.name}</p>}
+        </div>
+        <button onClick={onClose} className="icon-action" aria-label="Close history">
+          <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="m6 6 12 12M6 18 18 6" /></svg>
+        </button>
+      </header>
 
-      <div className="overflow-y-auto p-4 md:p-6 space-y-8">
-        {uniqueExercises.length > 0 && (
-          <div>
-            <h3 className="text-2xl font-bold text-center text-text-primary mb-2">Progress Tracker</h3>
-            <p className="text-center text-text-secondary mb-6">Select an exercise to visualize your strength gains over time.</p>
-            <div className="bg-background-dark/50 p-6 rounded-xl shadow-xl">
-              <label htmlFor="exercise-select" className="block text-sm font-medium text-text-secondary mb-2">Select an exercise:</label>
-              <select
-                id="exercise-select"
-                value={selectedExercise || ''}
-                onChange={(e) => setSelectedExercise(e.target.value || null)}
-                className="w-full bg-card-dark border border-border-color text-text-primary rounded-lg focus:ring-brand-primary focus:border-brand-primary p-2.5"
-              >
-                <option value="">-- Select Exercise --</option>
-                {uniqueExercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
-              </select>
+      <nav aria-label="History views" className="segmented-control mx-4 mt-4 sm:mx-6">
+        {historyViews.map(label => (
+          <button type="button" key={label} onClick={() => setView(label)} aria-pressed={view === label}>{label}</button>
+        ))}
+      </nav>
 
-              {selectedExercise && chartData.length > 1 && (
-                <div className="mt-6" style={{ width: '100%', height: 300 }}>
-                    <ResponsiveContainer>
-                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
-                            <YAxis stroke="#9ca3af" fontSize={12} label={{ value: 'Max Weight (kg)', angle: -90, position: 'insideLeft', fill: '#9ca3af', dy: -10 }} />
-                            <Tooltip 
-                              contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #4b5563', borderRadius: '0.5rem' }}
-                              labelStyle={{ color: '#f9fafb' }}
-                            />
-                            <Legend wrapperStyle={{ color: '#f9fafb' }} />
-                            <Line type="monotone" dataKey="maxWeight" name={`Max Weight`} stroke="#14b8a6" strokeWidth={2} activeDot={{ r: 8 }} dot={{ r: 4 }} />
-                        </LineChart>
-                    </ResponsiveContainer>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-5 sm:px-6">
+        {view === 'Sessions' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-3 gap-2.5">
+              {[[logs.length, 'Sessions'], [allSetCount, 'Sets logged'], [recordCount, 'Rep records']].map(([value, label]) => (
+                <div key={label} className="stat-card">
+                  <span className="text-2xl font-bold tabular-nums text-brand-light">{value}</span>
+                  <span className="mt-1 text-xs text-text-secondary">{label}</span>
                 </div>
-              )}
-              {selectedExercise && chartData.length <= 1 && (
-                 <div className="text-center text-text-secondary mt-10 p-4 bg-card-dark rounded-md">
-                   <p>Log this exercise at least twice to see your progress chart.</p>
-                 </div>
-              )}
-              {!selectedExercise && (
-                   <div className="text-center text-text-secondary mt-10 p-4 bg-card-dark rounded-md">
-                      <p>Select an exercise from the dropdown to view your progress.</p>
-                  </div>
-              )}
+              ))}
             </div>
+            {logs.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-semibold">Session log</h3>
+                  <select aria-label="Filter sessions by routine" className="track-input min-w-0 max-w-[56%]" value={selectedRoutineFilter === null || !uniqueRoutines.includes(selectedRoutineFilter) ? '' : 'routine:' + selectedRoutineFilter} onChange={event => setSelectedRoutineFilter(event.target.value ? event.target.value.slice(8) : null)}>
+                    <option value="">All routines</option>
+                    {uniqueRoutines.map(name => <option key={name} value={'routine:' + name}>{name}</option>)}
+                  </select>
+                </div>
+                {monthGroups.map(([month, sessions]) => (
+                  <section key={month} className="space-y-3">
+                    <h4 className="text-xs font-semibold text-text-secondary">{month}</h4>
+                    {sessions.map(log => {
+                      const date = new Date(log.date);
+                      const isExpanded = expandedLogs.has(log.id);
+                      const effort = log.effort ? EFFORT_LEVELS[log.effort] : undefined;
+                      const sets = completedSets(log);
+                      const editing = draft?.id === log.id;
+                      return (
+                        <article key={log.id} className="session-history-card">
+                          <button className="flex w-full items-center gap-3 px-3 py-4 text-left hover:bg-card-dark/50 sm:px-4" onClick={() => toggleLogExpansion(log.id)} aria-expanded={isExpanded} aria-controls={isExpanded ? `log-${log.id}` : undefined}>
+                            <span className="session-date" aria-label={fullDate(log.date)}>
+                              <span className="text-[10px] font-semibold uppercase">{date.toLocaleDateString(undefined, { month: 'short' })}</span>
+                              <span className="text-xl font-bold leading-none tabular-nums">{date.getDate()}</span>
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block break-words font-bold">{log.routineName}</span>
+                              <span className="mt-1 block text-xs text-text-secondary">{log.exercises.length} {log.exercises.length === 1 ? 'exercise' : 'exercises'} · {sets.length} {sets.length === 1 ? 'set' : 'sets'}</span>
+                              <span className="mt-2 flex flex-wrap gap-1.5">
+                                {effort && <span className="history-chip" aria-label={`Effort: ${effort.label}`}>{effort.label}</span>}
+                                {sets.some(set => set.isPR) && <span className="history-chip text-yellow-300">Personal record</span>}
+                              </span>
+                            </span>
+                            <Chevron open={isExpanded} />
+                          </button>
+                          {isExpanded && (
+                            <div id={`log-${log.id}`} className="space-y-3 border-t border-border-color/60 p-3 sm:p-4">
+                              {(editing ? draft : log).exercises.map((exercise, exIndex) => (
+                                <section key={exIndex} className="rounded-xl border border-border-color/60 bg-background-dark p-3">
+                                  <div className="mb-2 flex items-center gap-2.5">
+                                    <ExerciseArtwork name={exercise.name} className="!w-9 shrink-0 !rounded-lg" />
+                                    <h5 className="min-w-0 break-words text-sm font-semibold">{exercise.name}</h5>
+                                  </div>
+                                  <ul className={editing ? 'grid gap-2' : 'grid grid-cols-2 gap-2 sm:grid-cols-3'}>
+                                    {exercise.sets.map((set, setIndex) => (
+                                      <li key={set.id} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-background-light px-2.5 py-2 text-xs">
+                                        <span className="text-text-secondary">Set {setIndex + 1}</span>
+                                        {editing ? (
+                                          <span className="ml-auto flex items-center gap-1.5">
+                                            <input type="text" inputMode="decimal" value={set.weight} onChange={event => editSet(exIndex, setIndex, 'weight', event.target.value)} className="track-input w-16 text-right" aria-label={`${exercise.name} set ${setIndex + 1} weight in kg`} />
+                                            <span className="text-text-secondary">kg ×</span>
+                                            <input type="text" inputMode="numeric" value={set.reps} onChange={event => editSet(exIndex, setIndex, 'reps', event.target.value)} className="track-input w-12 text-right" aria-label={`${exercise.name} set ${setIndex + 1} reps`} />
+                                          </span>
+                                        ) : (
+                                          <span className="font-medium tabular-nums">{set.weight || '–'} kg × {set.reps || '–'} {set.isPR && <span className="ml-1 text-yellow-300">PR</span>}</span>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </section>
+                              ))}
+                              <div className="flex justify-end gap-2">
+                                {editing ? <>
+                                  <button className="panel-action" onClick={() => setDraft(null)}>Cancel</button>
+                                  <button className="panel-action panel-action-primary" onClick={saveDraft}>Save changes</button>
+                                </> : <>
+                                  <button className="panel-action" onClick={() => setDraft(log)}>Edit session</button>
+                                  <button className="panel-action text-red-300" onClick={() => handleDelete(log)}>Delete</button>
+                                </>}
+                              </div>
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </section>
+                ))}
+              </>
+            ) : (
+              <div className="empty-session">
+                <NoDataIcon />
+                <h3 className="mt-3 text-lg font-semibold">No workouts logged yet</h3>
+                <p className="mt-1 text-sm text-text-secondary">Log your first session or import an existing backup.</p>
+                <button onClick={onClose} className="panel-action panel-action-primary mt-4">Back to workout</button>
+              </div>
+            )}
           </div>
         )}
 
-        <div>
-            <div className="text-center mt-8">
-                <button 
-                onClick={() => setIsBadgesExpanded(!isBadgesExpanded)}
-                className="inline-flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-semibold bg-card-dark/70 hover:bg-gray-600 text-text-primary transition-all duration-300 transform hover:scale-105 shadow-md"
-                aria-expanded={isBadgesExpanded}
-                >
-                <span>View Achievements</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform duration-300 ${isBadgesExpanded ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-                </button>
-            </div>
-            {isBadgesExpanded && (
-                <div className="mt-6 bg-background-dark/50 p-6 rounded-xl shadow-xl">
-                    <BadgesDisplay logs={logs} />
-                </div>
-            )}
-        </div>
-
-        <div>
-            <div className="flex justify-center items-center gap-2 mt-8 mb-6">
-                <h3 className="text-2xl font-bold text-text-primary">Personal Records</h3>
-                <InfoTooltip text="Personal Records (PRs) are automatically calculated when you log a new set with a heavier weight for a specific number of reps." />
-            </div>
-          {prExercises.length > 0 ? (
-            <div className="space-y-4">
-              {prExercises.map(exerciseName => (
-                <div key={exerciseName} className="bg-background-dark/50 p-4 rounded-xl">
-                  <h4 className="font-bold text-brand-light text-lg mb-3">{exerciseName}</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {Object.entries(personalRecords[exerciseName])
-                      .sort((a, b) => parseInt(a[0], 10) - parseInt(b[0], 10))
-                      .map(([reps, pr]) => (
-                        <div key={reps} className="bg-card-dark p-3 rounded-lg text-center">
-                          <p className="text-sm text-text-secondary">{reps} Rep Max</p>
-                          <p className="font-bold text-xl text-text-primary mt-1">{pr.weight} kg</p>
-                          <p className="text-xs text-text-secondary mt-1">{new Date(pr.date).toLocaleDateString()}</p>
-                        </div>
-                    ))}
+        {view === 'Progress' && (
+          <section className="tracking-panel">
+            <h3 className="text-lg font-semibold">Strength over time</h3>
+            <p className="mt-1 text-sm text-text-secondary">Heaviest set for each session.</p>
+            {uniqueExercises.length > 0 ? (
+              <>
+                <label htmlFor="exercise-select" className="mt-4 block text-xs font-medium text-text-secondary">Exercise</label>
+                <select id="exercise-select" value={exerciseFilter} onChange={event => setSelectedExercise(event.target.value)} className="track-input mt-1.5 w-full">
+                  {uniqueExercises.map(exercise => <option key={exercise} value={exercise}>{exercise}</option>)}
+                </select>
+                {latestPoint && (
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="stat-card"><span className="text-xs text-text-secondary">Latest</span><strong className="mt-1 text-xl tabular-nums">{number.format(latestPoint.maxWeight)} kg</strong></div>
+                    <div className="stat-card"><span className="text-xs text-text-secondary">Best</span><strong className="mt-1 text-xl tabular-nums text-brand-light">{number.format(strongestWeight)} kg</strong></div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-text-secondary p-4 bg-background-dark/50 rounded-md">
-              <p>No Personal Records set yet. Keep lifting!</p>
-            </div>
-          )}
-        </div>
+                )}
+                {chartData.length > 1 ? (
+                  <div className="mt-5 h-56 min-w-0" aria-label="Heaviest set by session">
+                    <ResponsiveContainer>
+                      <AreaChart data={chartData} margin={{ top: 8, right: 10, left: -18, bottom: 2 }}>
+                        <defs><linearGradient id="strength-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="#75ebc9" stopOpacity={0.28} /><stop offset="100%" stopColor="#75ebc9" stopOpacity={0.02} /></linearGradient></defs>
+                        <CartesianGrid vertical={false} stroke="#2c3d49" strokeDasharray="3 4" />
+                        <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
+                        <YAxis tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} />
+                        <Tooltip labelFormatter={fullDate} formatter={value => [`${value} kg`, 'Heaviest set']} contentStyle={{ background: '#121c24', borderColor: '#2c3d49', borderRadius: 12 }} />
+                        <Area dataKey="maxWeight" type="linear" stroke="#75ebc9" fill="url(#strength-fill)" strokeWidth={2.5} dot={{ r: 3, fill: '#75ebc9' }} isAnimationActive={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : <p className="mt-5 rounded-xl bg-background-dark p-4 text-sm text-text-secondary">Log a weight for this exercise in two sessions to see a trend.</p>}
+              </>
+            ) : <p className="mt-5 text-sm text-text-secondary">Log your first workout to start tracking strength.</p>}
+          </section>
+        )}
 
-
-        <div>
-          <h3 className="text-2xl font-bold text-center text-text-primary mt-8 mb-2">Session Logs</h3>
-           <div className="flex flex-col md:flex-row gap-4 items-center mb-6 bg-background-dark/50 p-4 rounded-xl">
-            <select
-              onChange={(e) => setSelectedRoutineFilter(e.target.value)}
-              value={selectedRoutineFilter}
-              className="w-full md:w-auto bg-card-dark border border-border-color text-text-primary rounded-lg focus:ring-brand-primary focus:border-brand-primary p-2.5"
-            >
-              <option value="all">All Routines</option>
-              {uniqueRoutines.map(day => (
-                <option key={day} value={day}>{day}</option>
-              ))}
-            </select>
-            <div className="flex gap-2 ml-auto">
-                <button onClick={handleImportClick} className="flex items-center px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600 transition-colors">
-                    <UploadIcon/>
-                    Import
-                </button>
-                 <div className="relative inline-block text-left group">
-                    <button className="flex items-center px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600 transition-colors h-full">
-                        <DownloadIcon/>
-                        Export
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                    </button>
-                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-gray-600 ring-1 ring-black ring-opacity-5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 z-20 invisible group-hover:visible group-focus-within:visible">
-                        <div className="py-1" role="menu" aria-orientation="vertical">
-                        <a href="#" onClick={(e) => { e.preventDefault(); onExportLogs(); }} className="block px-4 py-2 text-sm text-text-primary hover:bg-gray-700" role="menuitem">Full backup (.json)</a>
-                        <a href="#" onClick={(e) => { e.preventDefault(); handleExportDoc(); }} className="block px-4 py-2 text-sm text-text-primary hover:bg-gray-700" role="menuitem">as Document (.doc)</a>
-                        </div>
-                    </div>
-                </div>
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+        {view === 'Records' && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-lg font-semibold">Personal records</h3>
+              <p className="mt-1 text-sm text-text-secondary">Your heaviest weight at each rep count.</p>
             </div>
+            {prExercises.length === 0 && <p className="tracking-panel text-sm text-text-secondary">Log a weighted set to start tracking your records.</p>}
+            {prExercises.map(exercise => (
+              <section key={exercise} className="tracking-panel">
+                <div className="mb-4 flex items-center gap-3">
+                  <ExerciseArtwork name={exercise} className="!w-11 shrink-0 !rounded-lg" />
+                  <h4 className="flex-1 font-semibold">{exercise}</h4>
+                  <MedalIcon />
+                </div>
+                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {Object.entries(personalRecords[exercise]).sort(([a], [b]) => Number(a) - Number(b)).map(([reps, record]) => (
+                    <li key={reps} className="rounded-xl border border-border-color/60 bg-background-dark p-3">
+                      <span className="text-xs text-text-secondary">{reps} {reps === '1' ? 'rep' : 'reps'}</span>
+                      <strong className="block text-lg tabular-nums text-brand-light">{number.format(record.weight)} kg</strong>
+                      <span className="text-xs text-text-secondary">{fullDate(record.date)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+            <section className="tracking-panel">
+              <button className="flex w-full items-center justify-between gap-3 text-left font-semibold" aria-expanded={isBadgesExpanded} onClick={() => setIsBadgesExpanded(value => !value)}>
+                Achievements <Chevron open={isBadgesExpanded} />
+              </button>
+              {isBadgesExpanded && <div className="mt-4"><BadgesDisplay logs={logs} /></div>}
+            </section>
           </div>
-          <div className="space-y-4">
-            {filteredLogs.map(log => {
-              const isExpanded = expandedLogs.has(log.id);
-              const effort = log.effort ? EFFORT_LEVELS[log.effort] : null;
-              return (
-              <div key={log.id} className="bg-card-dark/50 rounded-xl shadow-lg border border-border-color/50 overflow-hidden transition-all duration-300">
-                <div 
-                  onClick={() => toggleLogExpansion(log.id)}
-                  className="flex justify-between items-center p-5 cursor-pointer hover:bg-background-dark/40"
-                  aria-expanded={isExpanded}
-                  aria-controls={`log-content-${log.id}`}
-                  >
-                  <div>
-                      <h3 className="font-bold text-xl text-brand-light">{log.routineName}</h3>
-                      <span className="text-sm text-text-secondary">{new Date(log.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {effort && (
-                      <div className="hidden sm:flex items-center gap-2 text-xs font-mono bg-background-dark text-text-secondary px-3 py-1 rounded-full" title={`Effort: ${effort.label}`}>
-                        <span className="text-lg">{effort.emoji}</span>
-                        <span className="hidden lg:inline">{effort.label}</span>
-                      </div>
-                    )}
-                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-text-secondary transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-                <div 
-                    id={`log-content-${log.id}`}
-                    className={`grid transition-all duration-500 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
-                >
-                    <div className="overflow-hidden">
-                        <div className="p-5 pt-0 space-y-4 border-t border-border-color/30">
-                          {(draft?.id === log.id ? draft : log).exercises.map((exercise, index) => (
-                            <div key={index} className="bg-background-dark/50 p-3 rounded-md">
-                              <p className="font-semibold text-text-primary mb-2">{exercise.name}</p>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm">
-                                {exercise.sets.map((set, setIndex) => (
-                                  <div key={setIndex} className="flex items-center gap-2 bg-background-light p-2 rounded-md">
-                                      <span className="font-mono text-xs text-text-secondary font-bold">SET {setIndex+1}</span>
-                                      <div className="flex-grow text-right flex items-center justify-end gap-2">
-                                          {draft?.id === log.id ? (
-                                            <div className="flex items-center gap-1">
-                                              <input type="number" inputMode="decimal" value={set.weight} onChange={e => editSet(index, setIndex, 'weight', e.target.value)} className="w-14 bg-background-dark border border-border-color rounded p-1 text-right" aria-label={`${exercise.name} set ${setIndex + 1} weight`} />
-                                              <span className="text-text-secondary">x</span>
-                                              <input type="number" inputMode="numeric" value={set.reps} onChange={e => editSet(index, setIndex, 'reps', e.target.value)} className="w-12 bg-background-dark border border-border-color rounded p-1 text-right" aria-label={`${exercise.name} set ${setIndex + 1} reps`} />
-                                            </div>
-                                          ) : (
-                                          <div>
-                                            <span className="font-semibold text-text-primary">{set.weight}</span>
-                                            <span className="text-xs text-text-secondary ml-1">kg</span>
-                                            <span className="text-text-secondary mx-1">x</span>
-                                            <span className="font-semibold text-text-primary">{set.reps}</span>
-                                            <span className="text-xs text-text-secondary ml-1">reps</span>
-                                          </div>
-                                          )}
-                                          {draft?.id !== log.id && set.isPR && <div title="New Personal Record!"><MedalIcon /></div>}
-                                      </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                          <div className="flex justify-end gap-2">
-                            {draft?.id === log.id ? (
-                              <>
-                                <button onClick={() => setDraft(null)} className="px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600">Cancel</button>
-                                <button onClick={saveDraft} className="px-3 py-2 rounded-md text-sm font-semibold bg-brand-primary text-white hover:bg-brand-secondary">Save changes</button>
-                              </>
-                            ) : (
-                              <>
-                                <button onClick={() => setDraft(log)} className="px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600">Edit</button>
-                                <button onClick={() => handleDelete(log)} className="px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-red-400 hover:bg-red-900/40">Delete</button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                    </div>
-                </div>
-              </div>
-            )})}
+        )}
+        <details className="mt-7 rounded-xl border border-border-color/70 bg-background-light">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Import &amp; export</summary>
+          <div className="flex flex-wrap gap-2 border-t border-border-color/60 p-3">
+            <button onClick={handleImportClick} className="panel-action"><UploadIcon /> Import backup</button>
+            <button onClick={onExportLogs} className="panel-action"><DownloadIcon /> Full backup (.json)</button>
+            {logs.length > 0 && <button onClick={handleExportDoc} className="panel-action"><DownloadIcon /> Document (.doc)</button>}
           </div>
-        </div>
+        </details>
+        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" hidden />
       </div>
-    </div>
+    </>
   );
 };
 
