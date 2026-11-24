@@ -5,6 +5,11 @@ A sleek, modern, and offline-first web application to log your gym training sess
 
 ![Gym Weight Logger Screenshot](https://storage.googleapis.com/aistudio-project-files/55b38a7c-50a1-4228-86d3-21c8340d869a/d0107e32-a6f6-455c-a50e-5a50787e91d8)
 
+## 📲 Get the app
+
+- **Android:** [Download GymLogger.apk](https://github.com/pasanvish/Workout_log/releases/latest/download/GymLogger.apk), open it on your phone and tap Install (allow installs from your browser if asked).
+- **iPhone / any device:** open [pasanvish.github.io/Workout_log](https://pasanvish.github.io/Workout_log/) and use *Add to Home Screen*.
+
 ## ✨ Key Features
 
 - **Intuitive Workout Logging**: A step-by-step process to log your workout day, select exercises, and record sets with weight and reps.
@@ -23,23 +28,20 @@ This project is built with a modern frontend stack, focusing on simplicity and p
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Charting**: [Recharts](https://recharts.org/)
-- **Build**: No build step needed! It uses modern browser features like ES Modules and `importmap`.
+- **Build**: [Vite](https://vitejs.dev/); Android app via [Capacitor](https://capacitorjs.com/)
 
 ## 🛠️ Getting Started
 
-This is a client-side-only application. There's no backend or build process required.
+This is a client-side-only application with no backend.
 
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/your-username/gym-logger.git
-    ```
-2.  Navigate to the project directory:
-    ```bash
-    cd gym-logger
-    ```
-3.  Open the `index.html` file in your favorite web browser. That's it!
+```bash
+git clone https://github.com/pasanvish/Workout_log.git
+cd Workout_log
+npm install
+npm run dev
+```
 
-You can also use a simple local server (like the Live Server extension in VS Code) for a slightly better development experience.
+Pushing to `main` deploys the website. Pushing a `v*` tag builds a signed Android APK and attaches it to a GitHub Release.
 
 ## 📁 File Structure
 
@@ -69,7 +71,7 @@ All your workout data is stored in your browser's `localStorage` under the key `
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/your-username/gym-logger/issues).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/pasanvish/Workout_log/issues).
 
 ## 📄 License
 

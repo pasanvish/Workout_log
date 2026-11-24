@@ -5,6 +5,9 @@ import ProfileManager from './components/ProfileManager';
 import PRNotificationModal from './components/PRNotificationModal';
 import { WorkoutLog, Profile, CustomRoutine, CustomExercise, AllPRs, BodyMeasurementLog } from './types';
 import BodyMeasurements from './components/BodyMeasurements';
+import { Capacitor } from '@capacitor/core';
+
+const ANDROID_APK_URL = 'https://github.com/pasanvish/Workout_log/releases/latest/download/GymLogger.apk';
 import { recomputePRs, parseBackup, mergeById, sortByDateDesc, Backup } from './data';
 
 const App: React.FC = () => {
@@ -22,6 +25,15 @@ const App: React.FC = () => {
   const [newlySetPRs, setNewlySetPRs] = useState<Array<{exerciseName: string; weight: string; reps: string}>>([]);
   const [isAppReady, setIsAppReady] = useState(false);
   const [activeTab, setActiveTab] = useState<'logger' | 'measurements'>('logger');
+  const [showAndroidBanner, setShowAndroidBanner] = useState(() => {
+    try {
+      return /Android/i.test(navigator.userAgent) && !Capacitor.isNativePlatform() && !localStorage.getItem('hideAndroidBanner');
+    } catch { return false; }
+  });
+  const dismissAndroidBanner = () => {
+    setShowAndroidBanner(false);
+    try { localStorage.setItem('hideAndroidBanner', '1'); } catch { /* ignore */ }
+  };
 
 
   useEffect(() => {
@@ -211,52 +223,57 @@ const App: React.FC = () => {
     return <ProfileManager profiles={profiles} onAddProfile={addProfile} onSelectProfile={switchProfile} />;
   }
 
+  const tabs = [
+    { id: 'logger' as const, label: 'Workout', icon: 'M4 10h2m12 0h2M6 7v6m12-6v6M8 8.5v3m8-3v3M8 10h8' },
+    { id: 'measurements' as const, label: 'Body', icon: 'M4 19h16M6 15l3-4 3 2 3-5 3 3' },
+  ];
+
   return (
     <div className="min-h-screen bg-background-dark font-sans">
-      <header className="bg-background-light/80 backdrop-blur-sm sticky top-0 z-20 shadow-lg border-b border-border-color/50">
-        <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-             <div className="bg-brand-primary p-2 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M5 13a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" /><path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v1.333a1 1 0 00.707.943l2 1A1 1 0 0013 7.667V6a1 1 0 00-1-1h-2zm-2 4.667V11a1 1 0 001 1h2a1 1 0 001-1V7.667a1 1 0 00-.293-.707l-2-2A1 1 0 009.414 5H8a1 1 0 00-1 1v1.667zM3 10a1 1 0 011-1h2a1 1 0 110 2H4a1 1 0 01-1-1zm13 0a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clipRule="evenodd" />
-                </svg>
+      <header className="bg-background-light/90 backdrop-blur-sm sticky top-0 z-20 border-b border-border-color/50 pt-[env(safe-area-inset-top)]">
+        <nav className="container mx-auto px-4 md:px-6 h-14 flex justify-between items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src="./icon.svg" alt="" className="h-9 w-9 rounded-lg shrink-0" />
+            <div className="min-w-0 leading-tight">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-brand-primary">Gym Logger</p>
+              <h1 className="text-base font-bold text-text-primary truncate">{activeProfile.name}</h1>
             </div>
-            <h1 className="text-xl font-bold text-text-primary tracking-wider">{activeProfile.name}'s Log</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 shrink-0">
             <button
-                onClick={() => setActiveProfileId(null)}
-                className="text-sm text-text-secondary hover:text-text-primary transition-colors"
-                aria-label="Switch profile"
+              onClick={() => setActiveProfileId(null)}
+              className="h-10 px-3 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-card-dark transition-colors"
             >
-                Switch Profile
+              Switch
             </button>
             <button
               onClick={() => setIsHistoryDrawerOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-all duration-300 transform hover:scale-105 shadow-md"
-              aria-label="View workout history"
+              className="hidden md:flex items-center gap-2 h-10 px-4 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-colors"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zM4 4a1 1 0 00-1 1v1a1 1 0 002 0V5a1 1 0 00-1-1zM16 4a1 1 0 00-1 1v1a1 1 0 002 0V5a1 1 0 00-1-1z" /><path fillRule="evenodd" d="M5.5 9.5A1.5 1.5 0 017 8h6a1.5 1.5 0 011.5 1.5v5A1.5 1.5 0 0113 16H7a1.5 1.5 0 01-1.5-1.5v-5zM7 9h6v5H7V9z" clipRule="evenodd" /></svg>
-              <span>History</span>
+              History
             </button>
           </div>
         </nav>
       </header>
-      <main className="container mx-auto p-4 md:p-6">
-        <div className="max-w-4xl mx-auto mb-6">
+      <main className="container mx-auto p-4 md:p-6 pb-28 md:pb-6">
+        {showAndroidBanner && (
+          <div className="max-w-4xl mx-auto mb-4 flex items-center gap-3 rounded-xl border border-brand-primary/40 bg-brand-primary/10 p-3">
+            <p className="flex-1 text-sm text-text-primary">Get the Android app for the full-screen experience.</p>
+            <a href={ANDROID_APK_URL} className="shrink-0 rounded-lg bg-brand-primary px-3 py-2 text-sm font-semibold text-white hover:bg-brand-secondary">Download</a>
+            <button onClick={dismissAndroidBanner} className="shrink-0 h-9 w-9 rounded-lg text-text-secondary hover:text-text-primary" aria-label="Dismiss">✕</button>
+          </div>
+        )}
+        <div className="hidden md:block max-w-4xl mx-auto mb-6">
             <div className="flex border-b border-border-color">
-            <button
-                onClick={() => setActiveTab('logger')}
-                className={`px-6 py-3 text-sm font-bold tracking-wider uppercase transition-colors w-1/2 ${activeTab === 'logger' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-text-secondary hover:text-text-primary'}`}
-            >
-                Workouts
-            </button>
-            <button
-                onClick={() => setActiveTab('measurements')}
-                className={`px-6 py-3 text-sm font-bold tracking-wider uppercase transition-colors w-1/2 ${activeTab === 'measurements' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-text-secondary hover:text-text-primary'}`}
-            >
-                Measurements
-            </button>
+            {tabs.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`px-6 py-3 text-sm font-bold tracking-wider uppercase transition-colors w-1/2 ${activeTab === t.id ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-text-secondary hover:text-text-primary'}`}
+              >
+                {t.id === 'logger' ? 'Workouts' : 'Measurements'}
+              </button>
+            ))}
             </div>
         </div>
         <div key={activeTab} className="animate-fade-in-up">
@@ -268,6 +285,7 @@ const App: React.FC = () => {
                     logs={activeLogs}
                     customExercises={activeCustomExercises}
                     onAddCustomExercise={addCustomExercise}
+                    draftKey={`draftWorkout_${activeProfileId}`}
                 />
             )}
             {activeTab === 'measurements' && (
@@ -278,6 +296,28 @@ const App: React.FC = () => {
             )}
         </div>
       </main>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-background-light/95 backdrop-blur-sm border-t border-border-color/60 pb-[env(safe-area-inset-bottom)]">
+        <div className="grid grid-cols-3">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex flex-col items-center gap-1 py-2.5 text-xs font-semibold transition-colors ${activeTab === t.id ? 'text-brand-primary' : 'text-text-secondary'}`}
+              aria-current={activeTab === t.id ? 'page' : undefined}
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={t.icon} /></svg>
+              {t.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setIsHistoryDrawerOpen(true)}
+            className="flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-text-secondary"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            History
+          </button>
+        </div>
+      </nav>
       <HistoryDrawer
         isOpen={isHistoryDrawerOpen}
         onClose={() => setIsHistoryDrawerOpen(false)}
