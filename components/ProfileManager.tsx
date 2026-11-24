@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Profile } from '../types';
+import ProfileAvatar from './ProfileAvatar';
 
 interface ProfileManagerProps {
   profiles: Profile[];
@@ -27,7 +28,7 @@ export default function ProfileManager({ profiles, onAddProfile, onSelectProfile
             <div className="grid gap-2.5">
               {profiles.map(profile => (
                 <button type="button" key={profile.id} onClick={() => onSelectProfile(profile.id)} className="profile-option">
-                  <span aria-hidden="true" className="session-date !size-10 text-sm font-bold">{Array.from(profile.name.trim())[0]?.toLocaleUpperCase() || '?'}</span>
+                  <ProfileAvatar profile={profile} className="size-10 text-sm" />
                   <span className="min-w-0 flex-1 break-words text-sm font-semibold">{profile.name}</span>
                   <span aria-hidden="true" className="text-brand-light">→</span>
                 </button>

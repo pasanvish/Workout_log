@@ -5,16 +5,19 @@ import BadgesDisplay from './BadgesDisplay';
 import TrainingProgress from './TrainingProgress';
 import ExerciseArtwork from './ExerciseArtwork';
 import { EFFORT_LEVELS } from './WorkoutFeedbackModal';
+import { exportName, saveExport, workoutReport } from '../exports';
 
 interface WorkoutHistoryProps {
   logs: WorkoutLog[];
-  onImportLogs: (data: unknown) => void;
+  onImportLogs: (data: unknown) => string;
   onDeleteLog: (logId: string) => void;
   onUpdateLog: (log: WorkoutLog) => void;
-  onExportLogs: () => void;
+  onExportLogs: () => Promise<boolean>;
   onClose: () => void;
   activeProfile: Profile | undefined;
   personalRecords: ProfilePRs;
+  view: HistoryView;
+  onViewChange: (view: HistoryView) => void;
 }
 
 const DownloadIcon = () => (
@@ -42,8 +45,8 @@ const MedalIcon = () => (
   </svg>
 );
 
-const historyViews = ['Sessions', 'Progress', 'Records'] as const;
-type HistoryView = typeof historyViews[number];
+const historyViews = ['Sessions', 'Progress', 'Records', 'Badges'] as const;
+export type HistoryView = typeof historyViews[number];
 
 const shortDate = (date: string) => new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const fullDate = (date: string) => new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -59,9 +62,10 @@ const Chevron = ({ open }: { open: boolean }) => (
   </svg>
 );
 
-const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords, onDeleteLog, onUpdateLog }) => {
+const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords, onDeleteLog, onUpdateLog, view, onViewChange }) => {
+  const [fileStatus, setFileStatus] = useState('');
+  const [fileBusy, setFileBusy] = useState(false);
   const [draft, setDraft] = useState<WorkoutLog | null>(null);
-  const [view, setView] = useState<HistoryView>('Sessions');
 
   const editSet = (exIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
     setDraft(d => d && {
@@ -87,7 +91,6 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string | null>(null);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
-  const [isBadgesExpanded, setIsBadgesExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleLogExpansion = (logId: string) => {
@@ -153,99 +156,39 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
       fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-          try {
-              const text = e.target?.result;
-              if (typeof text === 'string') {
-                  const jsonData = JSON.parse(text);
-                  onImportLogs(jsonData);
-              }
-          } catch (error) {
-              alert("Error reading or parsing file. Please make sure it's a valid JSON file.");
-              console.error("Import error:", error);
-          }
-      };
-      reader.readAsText(file);
-      event.target.value = '';
-  };
-  
-  const handleExportDoc = () => {
-    if (!activeProfile || logs.length === 0) {
-        alert("No data to export.");
-        return;
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setFileBusy(true);
+    try {
+      setFileStatus(onImportLogs(JSON.parse(await file.text())));
+    } catch {
+      setFileStatus('Import failed. Choose a valid Gym Logger JSON backup.');
+    } finally {
+      setFileBusy(false);
     }
-
-    const styles = `
-        <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            h1, h2, h3 { color: #0f766e; }
-            h1 { font-size: 24px; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px; }
-            .workout-session { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; page-break-inside: avoid; }
-            .session-header h2 { font-size: 20px; margin: 0; }
-            .session-header p { font-size: 14px; color: #666; margin: 0; }
-            .effort-rating { font-size: 14px; font-weight: bold; color: #333; margin-top: 5px; }
-            .exercise { margin-top: 15px; }
-            .exercise h3 { font-size: 16px; margin-bottom: 5px; }
-            .sets-list { list-style: none; padding-left: 0; }
-            .set-item { display: inline-block; background: #f4f4f4; border-radius: 4px; padding: 5px 10px; margin-right: 5px; margin-bottom: 5px; font-family: monospace; }
-        </style>
-    `;
-
-    const logHtml = logs.map(log => `
-        <div class="workout-session">
-            <div class="session-header">
-                <h2>${log.routineName}</h2>
-                <p>${new Date(log.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                ${log.effort ? `<p class="effort-rating">Session Effort: ${EFFORT_LEVELS.find(item => item.level === log.effort)?.label || 'N/A'}</p>` : ''}
-            </div>
-            ${log.exercises.map(ex => `
-                <div class="exercise">
-                    <h3>${ex.name}</h3>
-                    <ul class="sets-list">
-                        ${ex.sets.map((set, index) => `
-                            <li class="set-item">
-                                <strong>Set ${index + 1}:</strong> ${set.weight} kg &times; ${set.reps} reps ${set.isPR ? '<strong>(PR!)</strong>' : ''}
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-            `).join('')}
-        </div>
-    `).join('');
-
-    const fullHtml = `
-        <!DOCTYPE html>
-        <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <title>Workout History - ${activeProfile.name}</title>
-                ${styles}
-            </head>
-            <body>
-                <h1>Workout History for ${activeProfile.name}</h1>
-                <p>Generated on ${new Date().toLocaleDateString()}</p>
-                ${logHtml}
-            </body>
-        </html>
-    `;
-
-    const blob = new Blob([fullHtml], { type: 'application/msword' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    const profileName = activeProfile.name.replace(/\s/g, '_');
-    link.download = `workout-history-${profileName}-${new Date().toISOString().split('T')[0]}.doc`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
-  
+
+  const exportFile = async (action: () => Promise<boolean>) => {
+    setFileBusy(true);
+    setFileStatus('');
+    try {
+      const saved = await action();
+      setFileStatus(saved ? 'Export ready. Check the location you chose or your downloads.' : 'Export canceled.');
+    } catch {
+      setFileStatus('Could not save the export. Try again or choose another location.');
+    } finally {
+      setFileBusy(false);
+    }
+  };
+
+  const exportReport = () => activeProfile ? saveExport({
+    filename: exportName('gym-workouts', activeProfile.name, 'html'),
+    mimeType: 'text/html',
+    content: workoutReport(activeProfile.name, logs),
+  }) : Promise.resolve(false);
+
   return (
     <>
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border-color/60 bg-background-light px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
@@ -260,7 +203,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
 
       <nav aria-label="History views" className="segmented-control mx-4 mt-4 sm:mx-6">
         {historyViews.map(label => (
-          <button type="button" key={label} onClick={() => setView(label)} aria-pressed={view === label}>{label}</button>
+          <button type="button" key={label} onClick={() => onViewChange(label)} aria-pressed={view === label}>{label}</button>
         ))}
       </nav>
 
@@ -277,7 +220,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
             </div>
             {logs.length > 0 ? (
               <>
-                <button type="button" onClick={() => setView('Progress')} className="progress-link">
+                <button type="button" onClick={() => onViewChange('Progress')} className="progress-link">
                   <span className="session-date !size-10" aria-hidden="true">
                     <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19h16M6 14l4-4 4 2 4-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </span>
@@ -393,12 +336,12 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                     <div className="mt-5 h-56 min-w-0" aria-label="Heaviest set by session">
                       <ResponsiveContainer>
                         <AreaChart data={chartData} margin={{ top: 8, right: 10, left: -18, bottom: 2 }}>
-                          <defs><linearGradient id="strength-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="#75ebc9" stopOpacity={0.28} /><stop offset="100%" stopColor="#75ebc9" stopOpacity={0.02} /></linearGradient></defs>
+                          <defs><linearGradient id="strength-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="rgb(var(--brand-light))" stopOpacity={0.28} /><stop offset="100%" stopColor="rgb(var(--brand-light))" stopOpacity={0.02} /></linearGradient></defs>
                           <CartesianGrid vertical={false} stroke="#2c3d49" strokeDasharray="3 4" />
                           <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
                           <YAxis tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} />
                           <Tooltip labelFormatter={fullDate} formatter={value => [`${value} kg`, 'Heaviest set']} contentStyle={{ background: '#121c24', borderColor: '#2c3d49', borderRadius: 12 }} />
-                          <Area dataKey="maxWeight" type="linear" stroke="#75ebc9" fill="url(#strength-fill)" strokeWidth={2.5} dot={{ r: 3, fill: '#75ebc9' }} isAnimationActive={false} />
+                          <Area dataKey="maxWeight" type="linear" stroke="rgb(var(--brand-light))" fill="url(#strength-fill)" strokeWidth={2.5} dot={{ r: 3, fill: 'rgb(var(--brand-light))' }} isAnimationActive={false} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -434,23 +377,24 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                 </ul>
               </section>
             ))}
-            <section className="tracking-panel">
-              <button className="flex w-full items-center justify-between gap-3 text-left font-semibold" aria-expanded={isBadgesExpanded} onClick={() => setIsBadgesExpanded(value => !value)}>
-                Achievements <Chevron open={isBadgesExpanded} />
-              </button>
-              {isBadgesExpanded && <div className="mt-4"><BadgesDisplay logs={logs} /></div>}
-            </section>
           </div>
+        )}
+        {view === 'Badges' && (
+          <section className="tracking-panel">
+            <h3 className="mb-2 text-lg font-semibold">Achievements</h3>
+            <BadgesDisplay logs={logs} />
+          </section>
         )}
         <details className="mt-7 rounded-xl border border-border-color/70 bg-background-light">
           <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Import &amp; export</summary>
           <div className="flex flex-wrap gap-2 border-t border-border-color/60 p-3">
-            <button onClick={handleImportClick} className="panel-action"><UploadIcon /> Import backup</button>
-            <button onClick={onExportLogs} className="panel-action"><DownloadIcon /> Full backup (.json)</button>
-            {logs.length > 0 && <button onClick={handleExportDoc} className="panel-action"><DownloadIcon /> Document (.doc)</button>}
+            <button onClick={handleImportClick} className="panel-action" disabled={fileBusy}><UploadIcon /> Import backup</button>
+            <button onClick={() => void exportFile(onExportLogs)} className="panel-action" disabled={fileBusy}><DownloadIcon /> Full backup (.json)</button>
+            {logs.length > 0 && <button onClick={() => void exportFile(exportReport)} className="panel-action" disabled={fileBusy}><DownloadIcon /> Workout report (.html)</button>}
           </div>
+          {fileStatus && <p role="status" className="px-4 pb-3 text-sm text-text-secondary">{fileStatus}</p>}
         </details>
-        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" hidden />
+        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json,application/json" hidden />
       </div>
     </>
   );

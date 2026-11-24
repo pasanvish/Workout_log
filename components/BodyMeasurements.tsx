@@ -127,12 +127,12 @@ const BodyMeasurements: React.FC<BodyMeasurementsProps> = ({ logs, onSave }) => 
             <div className="mt-3 h-52 min-w-0" aria-label={`${metric.label} over time`}>
               <ResponsiveContainer>
                 <AreaChart data={metric.points} margin={{ top: 10, right: 10, left: -14, bottom: 0 }}>
-                  <defs><linearGradient id="body-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="#75ebc9" stopOpacity={0.27} /><stop offset="100%" stopColor="#75ebc9" stopOpacity={0.02} /></linearGradient></defs>
+                  <defs><linearGradient id="body-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="rgb(var(--brand-light))" stopOpacity={0.27} /><stop offset="100%" stopColor="rgb(var(--brand-light))" stopOpacity={0.02} /></linearGradient></defs>
                   <CartesianGrid vertical={false} stroke="#2c3d49" strokeDasharray="3 4" />
                   <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
                   <YAxis domain={['auto', 'auto']} tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} />
                   <Tooltip labelFormatter={fullDate} formatter={value => [`${value} ${metric.unit}`, metric.label]} contentStyle={{ background: '#121c24', borderColor: '#2c3d49', borderRadius: 12 }} />
-                  <Area type="linear" dataKey="value" stroke="#75ebc9" fill="url(#body-fill)" strokeWidth={2.5} dot={{ r: 3, fill: '#75ebc9' }} isAnimationActive={false} />
+                  <Area type="linear" dataKey="value" stroke="rgb(var(--brand-light))" fill="url(#body-fill)" strokeWidth={2.5} dot={{ r: 3, fill: 'rgb(var(--brand-light))' }} isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

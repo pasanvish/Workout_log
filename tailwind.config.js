@@ -5,9 +5,9 @@ export default {
     extend: {
       fontFamily: { sans: ['Inter', 'sans-serif'] },
       colors: {
-        'brand-primary': '#10bca0',
-        'brand-secondary': '#087f70',
-        'brand-light': '#75ebc9',
+        'brand-primary': 'rgb(var(--brand-primary) / <alpha-value>)',
+        'brand-secondary': 'rgb(var(--brand-secondary) / <alpha-value>)',
+        'brand-light': 'rgb(var(--brand-light) / <alpha-value>)',
         'cyan-500': '#06b6d4',
         'background-dark': '#0b1116',
         'background-light': '#121c24',

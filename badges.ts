@@ -1,5 +1,6 @@
 import React from 'react';
-import { Badge, WorkoutLog } from './types';
+import type { Badge, WorkoutLog } from './types';
+import { completedSetCount, longestTrainingStreak } from './training';
 
 // Icon Components
 const FirstWorkoutIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -47,28 +48,26 @@ const FireIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 
+function milestone(
+  id: string, name: string, description: string, icon: Badge['icon'],
+  target: number, count: (logs: WorkoutLog[]) => number,
+): Badge {
+  return {
+    id, name, description, icon,
+    isEarned: logs => count(logs) >= target,
+    progress: logs => ({ current: Math.min(count(logs), target), target }),
+  };
+}
+
 export const BADGES: Badge[] = [
-  {
-    id: 'first_workout',
-    name: 'Getting Started',
-    description: 'Log your very first workout.',
-    icon: FirstWorkoutIcon,
-    isEarned: (logs) => logs.length >= 1,
-  },
-  {
-    id: 'novice_lifter',
-    name: 'Novice Lifter',
-    description: 'Log 5 total workouts.',
-    icon: DumbbellIcon,
-    isEarned: (logs) => logs.length >= 5,
-  },
-  {
-    id: 'dedicated_lifter',
-    name: 'Dedicated Lifter',
-    description: 'Log 25 total workouts.',
-    icon: MedalIcon,
-    isEarned: (logs) => logs.length >= 25,
-  },
+  milestone('first_workout', 'Getting Started', 'Log your first workout.', FirstWorkoutIcon, 1, logs => logs.length),
+  milestone('novice_lifter', 'Finding Your Rhythm', 'Log 5 workouts.', DumbbellIcon, 5, logs => logs.length),
+  milestone('fifty_sets', 'Set Collector', 'Complete 50 sets across your workouts.', DumbbellIcon, 50,
+    logs => logs.reduce((sum, log) => sum + completedSetCount(log), 0)),
+  milestone('three_weeks', 'Showing Up', 'Log a workout in 3 consecutive weeks.', CalendarIcon, 3, longestTrainingStreak),
+  milestone('first_pr', 'Personal Best', 'Set your first personal record.', MedalIcon, 1,
+    logs => logs.some(log => log.exercises.some(exercise => exercise.sets.some(set => set.isPR))) ? 1 : 0),
+  milestone('dedicated_lifter', 'Dedicated Lifter', 'Log 25 workouts.', MedalIcon, 25, logs => logs.length),
   {
     id: 'weekend_warrior',
     name: 'Weekend Warrior',
@@ -107,7 +106,7 @@ export const BADGES: Badge[] = [
         )
     ),
     isEarned: (logs) => {
-        const exerciseCounts: Record<string, number> = {};
+        const exerciseCounts: Record<string, number> = Object.create(null);
         logs.forEach(log => {
             const exercisesInLog = new Set(log.exercises.map(ex => ex.name));
             exercisesInLog.forEach(exName => {
@@ -120,7 +119,7 @@ export const BADGES: Badge[] = [
   {
     id: 'heavy_lifter',
     name: 'Heavy Lifter',
-    description: 'Lift over 100kg in any exercise.',
+    description: 'Log a set of at least 100 kg.',
     icon: (props) => (
         // Fix: Converted from JSX to React.createElement to be valid in a .ts file.
         React.createElement('svg', { ...props, xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 1.5 },

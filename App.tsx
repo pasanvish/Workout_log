@@ -2,8 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import WorkoutLogger from './components/WorkoutLogger';
 import HistoryDrawer from './components/HistoryDrawer';
 import ProfileManager from './components/ProfileManager';
+import ProfileAvatar from './components/ProfileAvatar';
+import ProfileSettings from './components/ProfileSettings';
+import type { HistoryView } from './components/WorkoutHistory';
+import { BADGES } from './badges';
+import { cleanAppearance } from './profile';
+import { exportName, saveExport } from './exports';
 import PRNotificationModal from './components/PRNotificationModal';
-import { WorkoutLog, Profile, CustomRoutine, CustomExercise, AllPRs, BodyMeasurementLog } from './types';
+import { WorkoutLog, Profile, CustomRoutine, CustomExercise, AllPRs, BodyMeasurementLog, Badge } from './types';
 import BodyMeasurements from './components/BodyMeasurements';
 import { Capacitor } from '@capacitor/core';
 
@@ -12,6 +18,13 @@ import { recomputePRs, parseBackup, mergeById, sortByDateDesc, Backup } from './
 
 const App: React.FC = () => {
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [historyView, setHistoryView] = useState<HistoryView>('Sessions');
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [newBadges, setNewBadges] = useState<Badge[]>([]);
+  const openHistory = (view: HistoryView = 'Sessions') => {
+    setHistoryView(view);
+    setIsHistoryDrawerOpen(true);
+  };
   
   // App-wide state
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -46,7 +59,7 @@ const App: React.FC = () => {
       const savedPersonalRecords = JSON.parse(localStorage.getItem('personalRecords') || '{}');
       const savedBodyMeasurements = JSON.parse(localStorage.getItem('bodyMeasurements') || '{}');
 
-      setProfiles(savedProfiles);
+      setProfiles(savedProfiles.map(({ id, name, ...appearance }: Profile) => ({ id, name, ...cleanAppearance(appearance) })));
       setActiveProfileId(savedActiveProfileId);
       setWorkoutLogs(savedWorkoutLogs);
       setCustomRoutines(savedCustomRoutines);
@@ -86,7 +99,7 @@ const App: React.FC = () => {
     if (!activeProfileId) return;
 
     const currentPRs = personalRecords[activeProfileId] || {};
-    const updatedPRs = JSON.parse(JSON.stringify(currentPRs)); // Deep copy
+    const updatedPRs = Object.assign(Object.create(null), JSON.parse(JSON.stringify(currentPRs))) as typeof currentPRs;
     const newPRsThisSession: Array<{ exerciseName: string; weight: string; reps: string }> = [];
     let prsUpdated = false;
 
@@ -119,13 +132,13 @@ const App: React.FC = () => {
       setPersonalRecords(prev => ({ ...prev, [activeProfileId]: updatedPRs }));
     }
 
-    const newLogs = [logWithPRs, ...(workoutLogs[activeProfileId] || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const previousLogs = workoutLogs[activeProfileId] || [];
+    const newLogs = [logWithPRs, ...previousLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setWorkoutLogs(prev => ({ ...prev, [activeProfileId]: newLogs }));
     
-    if (newPRsThisSession.length > 0) {
-      setNewlySetPRs(newPRsThisSession);
-    }
-
+    setNewlySetPRs(newPRsThisSession);
+    setNewBadges(BADGES.filter(badge => !badge.isEarned(previousLogs) && badge.isEarned(newLogs)));
+    setHistoryView('Sessions');
     setIsHistoryDrawerOpen(true);
   }, [activeProfileId, workoutLogs, personalRecords]);
 
@@ -152,42 +165,55 @@ const App: React.FC = () => {
     replaceLogs(activeProfileId, activeLogs.map(l => l.id === log.id ? log : l));
   }, [activeProfileId, activeLogs, replaceLogs]);
 
-  const handleImportLogs = useCallback((data: unknown) => {
-    if (!activeProfileId) return;
+  const handleImportLogs = (data: unknown) => {
+    if (!activeProfile) return 'Select a profile before importing a backup.';
     const backup = parseBackup(data);
-    if (!backup) {
-      alert('Import failed. The selected file is not a valid Gym Logger backup.');
-      return;
-    }
+    if (!backup) return 'Import failed. Choose a valid Gym Logger JSON backup.';
     const logs = mergeById(activeLogs, backup.workoutLogs);
-    const added = logs.length - activeLogs.length;
-    replaceLogs(activeProfileId, logs);
-    setCustomRoutines(prev => ({ ...prev, [activeProfileId]: mergeById(prev[activeProfileId] || [], backup.customRoutines) }));
-    setCustomExercises(prev => ({ ...prev, [activeProfileId]: mergeById(prev[activeProfileId] || [], backup.customExercises) }));
-    setBodyMeasurements(prev => ({ ...prev, [activeProfileId]: sortByDateDesc(mergeById(prev[activeProfileId] || [], backup.bodyMeasurements)) }));
-    alert(`Import complete for ${activeProfile?.name}: ${added} new workout${added === 1 ? '' : 's'} added. Nothing already on this device was overwritten.`);
-    setIsHistoryDrawerOpen(true);
-  }, [activeProfileId, activeProfile?.name, activeLogs, replaceLogs]);
+    const routines = mergeById(activeRoutines, backup.customRoutines);
+    const exercises = mergeById(activeCustomExercises, backup.customExercises);
+    const measurements = sortByDateDesc(mergeById(activeBodyMeasurements, backup.bodyMeasurements));
+    const profileId = activeProfile.id;
+    replaceLogs(profileId, logs);
+    setCustomRoutines(previous => ({ ...previous, [profileId]: routines }));
+    setCustomExercises(previous => ({ ...previous, [profileId]: exercises }));
+    setBodyMeasurements(previous => ({ ...previous, [profileId]: measurements }));
+    if (backup.profileAppearance) {
+      setProfiles(previous => previous.map(profile => profile.id === profileId
+        ? { ...backup.profileAppearance, ...profile } : profile));
+    }
+    const added = [
+      [logs.length - activeLogs.length, 'workouts'],
+      [routines.length - activeRoutines.length, 'routines'],
+      [exercises.length - activeCustomExercises.length, 'custom exercises'],
+      [measurements.length - activeBodyMeasurements.length, 'measurements'],
+    ] as const;
+    const summary = added.filter(([count]) => count > 0).map(([count, label]) => `${count} ${label}`);
+    return summary.length ? `Import complete: ${summary.join(', ')} added.` : 'Backup read. No new workout or measurement entries to add.';
+  };
 
-  const handleExportLogs = useCallback(() => {
-    if (!activeProfile) return;
+  const handleExportLogs = () => {
+    if (!activeProfile) return Promise.resolve(false);
     const backup: Backup = {
       app: 'gym-weight-logger',
       version: 2,
       exportedAt: new Date().toISOString(),
       profileName: activeProfile.name,
+      profileAppearance: cleanAppearance(activeProfile),
       workoutLogs: activeLogs,
       customRoutines: activeRoutines,
       customExercises: activeCustomExercises,
       bodyMeasurements: activeBodyMeasurements,
     };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `gym-backup-${activeProfile.name.replace(/\s/g, '_')}-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }, [activeProfile, activeLogs, activeRoutines, activeCustomExercises, activeBodyMeasurements]);
+    return saveExport({ filename: exportName('gym-backup', activeProfile.name, 'json'), mimeType: 'application/json', content: JSON.stringify(backup, null, 2) });
+  };
+
+  const saveProfile = (updated: Profile) => {
+    const next = profiles.map(profile => profile.id === updated.id ? updated : profile);
+    localStorage.setItem('profiles', JSON.stringify(next));
+    setProfiles(next);
+    setShowProfileSettings(false);
+  };
 
   const addProfile = (name: string) => {
     const newProfile: Profile = { id: Date.now().toString(), name };
@@ -229,11 +255,11 @@ const App: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background-dark font-sans">
+    <div className="min-h-screen bg-background-dark font-sans" data-accent={activeProfile.accent ?? 'mint'}>
       <header className="bg-background-light/90 backdrop-blur-sm sticky top-0 z-20 border-b border-border-color/50 pt-[env(safe-area-inset-top)]">
         <nav className="container mx-auto px-4 md:px-6 h-14 flex justify-between items-center gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <img src="./icon.svg" alt="" className="h-9 w-9 rounded-lg shrink-0" />
+            <ProfileAvatar profile={activeProfile} className="size-9 text-sm" />
             <div className="min-w-0 leading-tight">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-brand-primary">Gym Logger</p>
               <h1 className="text-base font-bold text-text-primary truncate">{activeProfile.name}</h1>
@@ -241,13 +267,13 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => setActiveProfileId(null)}
+              onClick={() => setShowProfileSettings(true)}
               className="panel-action"
             >
-              Switch
+              Profile
             </button>
             <button
-              onClick={() => setIsHistoryDrawerOpen(true)}
+              onClick={() => openHistory()}
               className="hidden md:flex items-center gap-2 h-10 px-4 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-colors"
             >
               History
@@ -286,6 +312,8 @@ const App: React.FC = () => {
                     customExercises={activeCustomExercises}
                     onAddCustomExercise={addCustomExercise}
                     draftKey={`draftWorkout_${activeProfileId}`}
+                    profile={activeProfile}
+                    onAchievements={() => openHistory('Badges')}
                 />
             )}
             {activeTab === 'measurements' && (
@@ -310,7 +338,7 @@ const App: React.FC = () => {
             </button>
           ))}
           <button
-            onClick={() => setIsHistoryDrawerOpen(true)}
+            onClick={() => openHistory()}
             className="mobile-nav-item"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -318,7 +346,11 @@ const App: React.FC = () => {
           </button>
         </div>
       </nav>
+      {showProfileSettings && <ProfileSettings profile={activeProfile} onSave={saveProfile} onClose={() => setShowProfileSettings(false)}
+        onSwitch={() => { setShowProfileSettings(false); setIsHistoryDrawerOpen(false); setActiveProfileId(null); }} />}
       <HistoryDrawer
+        view={historyView}
+        onViewChange={setHistoryView}
         isOpen={isHistoryDrawerOpen}
         onClose={() => setIsHistoryDrawerOpen(false)}
         logs={activeLogs}
@@ -330,9 +362,10 @@ const App: React.FC = () => {
         personalRecords={activePRs}
       />
       <PRNotificationModal
-        isOpen={newlySetPRs.length > 0}
-        onClose={() => setNewlySetPRs([])}
+        isOpen={newlySetPRs.length > 0 || newBadges.length > 0}
+        onClose={() => { setNewlySetPRs([]); if (newBadges.length) setHistoryView('Badges'); setNewBadges([]); }}
         prs={newlySetPRs}
+        badges={newBadges}
       />
     </div>
   );

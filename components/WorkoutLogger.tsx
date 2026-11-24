@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Exercise, WorkoutLog, CustomRoutine, CustomExercise } from '../types';
+import { Exercise, WorkoutLog, CustomRoutine, CustomExercise, Profile } from '../types';
 import ExerciseArtwork from './ExerciseArtwork';
+import TrainingWelcome from './TrainingWelcome';
 import ExerciseMuscles from './ExerciseMuscles';
 import { getExerciseDetails } from '../exerciseDetails';
 import ExerciseLogger, { newSetId } from './ExerciseLogger';
@@ -18,6 +19,8 @@ interface WorkoutLoggerProps {
   onAddCustomExercise: (exercise: Omit<CustomExercise, 'id'>) => CustomExercise;
   /** localStorage key for the in-progress workout, so it survives tab switches and app restarts. */
   draftKey: string;
+  profile: Profile;
+  onAchievements: () => void;
 }
 
 const PlusIcon = () => (
@@ -33,7 +36,7 @@ const InfoIcon = () => (
 );
 
 
-const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs, customExercises, onAddCustomExercise, draftKey }) => {
+const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs, customExercises, onAddCustomExercise, draftKey, profile, onAchievements }) => {
   const [draft] = useState<{ routine: CustomRoutine; exercises: Exercise[] } | null>(() => {
     try { return JSON.parse(localStorage.getItem(draftKey) || 'null'); } catch { return null; }
   });
@@ -130,13 +133,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
   return (
     <>
       <div className="workout-shell space-y-8 max-w-4xl mx-auto">
-        <section className="workout-hero">
-          <div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Your workouts</h2>
-            {selectedRoutine && <span className="hero-pill">Session in progress</span>}
-          </div>
-          <ExerciseArtwork name="Dumbbell Curl" className="hero-art" />
-        </section>
+        <TrainingWelcome profile={profile} logs={logs} onAchievements={onAchievements} />
         <div className="grid grid-cols-3 gap-2 sm:gap-4" aria-label="Training overview">
           {[
             [logs.length, 'Sessions logged'],

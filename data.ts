@@ -1,11 +1,12 @@
-import type { WorkoutLog, ProfilePRs, CustomRoutine, CustomExercise, BodyMeasurementLog } from './types';
+import { cleanAppearance } from './profile.ts';
+import type { WorkoutLog, ProfilePRs, CustomRoutine, CustomExercise, BodyMeasurementLog, ProfileAppearance } from './types';
 
 const byDateDesc = (a: { date: string }, b: { date: string }) =>
   new Date(b.date).getTime() - new Date(a.date).getTime();
 
 /** Rebuild PRs (best weight per exercise per rep count) and each set's isPR flag from scratch. */
 export function recomputePRs(logs: WorkoutLog[]): { logs: WorkoutLog[]; prs: ProfilePRs } {
-  const prs: ProfilePRs = {};
+  const prs: ProfilePRs = Object.create(null);
   const oldestFirst = [...logs].sort(byDateDesc).reverse().map(log => ({
     ...log,
     exercises: log.exercises.map(ex => ({
@@ -29,37 +30,91 @@ export interface Backup {
   version: 2;
   exportedAt: string;
   profileName: string;
+  profileAppearance?: ProfileAppearance;
   workoutLogs: WorkoutLog[];
   customRoutines: CustomRoutine[];
   customExercises: CustomExercise[];
   bodyMeasurements: BodyMeasurementLog[];
 }
 
-type Parsed = Pick<Backup, 'workoutLogs' | 'customRoutines' | 'customExercises' | 'bodyMeasurements'>;
+type Parsed = Pick<Backup, 'workoutLogs' | 'customRoutines' | 'customExercises' | 'bodyMeasurements' | 'profileAppearance'>;
 
-const arr = (v: unknown) => (Array.isArray(v) ? v : []);
-const isLog = (l: any): l is WorkoutLog =>
-  l && typeof l.id === 'string' && !isNaN(new Date(l.date).getTime()) && Array.isArray(l.exercises);
-const hasId = (x: any) => x && typeof x.id === 'string';
+const arr = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
+const record = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+const text = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
+const validDate = (value: unknown): value is string => typeof value === 'string' && Number.isFinite(Date.parse(value));
+const numericText = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? String(value) : typeof value === 'string' ? value : '';
 
-/** Accepts the new full backup object or the old plain array of workout logs. Returns null if unusable. */
+function parseLogs(value: unknown): WorkoutLog[] {
+  return arr(value).flatMap(entry => {
+    const log = record(entry);
+    if (!text(log.id) || !validDate(log.date) || !text(log.routineName) || !Array.isArray(log.exercises)) return [];
+    const exercises = log.exercises.flatMap(entry => {
+      const exercise = record(entry);
+      if (!text(exercise.name) || !Array.isArray(exercise.sets)) return [];
+      const sets = exercise.sets.flatMap((entry, index) => {
+        const set = record(entry);
+        const weight = numericText(set.weight);
+        const reps = numericText(set.reps);
+        return weight || reps ? [{ id: text(set.id) ? set.id : `set-${index}`, weight, reps }] : [];
+      });
+      return sets.length ? [{ name: exercise.name, sets }] : [];
+    });
+    if (!exercises.length) return [];
+    const effort = typeof log.effort === 'number' && Number.isInteger(log.effort) && log.effort >= 1 && log.effort <= 5
+      ? log.effort : undefined;
+    return [{ id: log.id, date: log.date, routineName: log.routineName, effort, exercises }];
+  });
+}
+
+const bodyFields = ['weight', 'bodyFat', 'neck', 'shoulders', 'chest', 'biceps', 'waist', 'hips', 'thighs', 'calves'] as const;
+
+/** Accepts Gym Logger backup files and older arrays of workout logs. */
 export function parseBackup(data: unknown): Parsed | null {
-  const obj: any = Array.isArray(data) ? { workoutLogs: data } : data;
-  if (!obj || typeof obj !== 'object') return null;
+  const obj = Array.isArray(data) ? { workoutLogs: data } : record(data);
   const parsed: Parsed = {
-    workoutLogs: arr(obj.workoutLogs).filter(isLog),
-    customRoutines: arr(obj.customRoutines).filter(hasId),
-    customExercises: arr(obj.customExercises).filter(hasId),
-    bodyMeasurements: arr(obj.bodyMeasurements).filter(hasId),
+    workoutLogs: parseLogs(obj.workoutLogs),
+    customRoutines: arr(obj.customRoutines).flatMap(entry => {
+      const item = record(entry);
+      if (!text(item.id) || !text(item.name) || !Array.isArray(item.exercises)) return [];
+      const exercises = item.exercises.filter(text);
+      return exercises.length ? [{ id: item.id, name: item.name, exercises }] : [];
+    }),
+    customExercises: arr(obj.customExercises).flatMap(entry => {
+      const item = record(entry);
+      return text(item.id) && text(item.name) && text(item.category) ? [{ id: item.id, name: item.name, category: item.category }] : [];
+    }),
+    bodyMeasurements: arr(obj.bodyMeasurements).flatMap(entry => {
+      const item = record(entry);
+      if (!text(item.id) || !validDate(item.date)) return [];
+      const log: BodyMeasurementLog = { id: item.id, date: item.date };
+      for (const key of bodyFields) {
+        const value = numericText(item[key]).trim();
+        if (value && Number.isFinite(Number(value))) log[key] = value;
+      }
+      return [log];
+    }),
   };
-  const total = Object.values(parsed).reduce((n, a) => n + a.length, 0);
-  return total > 0 ? parsed : null;
+  const recognized = 'app' in obj && obj.app === 'gym-weight-logger' && 'version' in obj && obj.version === 2;
+  if (recognized && 'profileAppearance' in obj) parsed.profileAppearance = cleanAppearance(obj.profileAppearance);
+  const total = parsed.workoutLogs.length + parsed.customRoutines.length + parsed.customExercises.length + parsed.bodyMeasurements.length;
+  const hasEmptyBackup = recognized && ['workoutLogs', 'customRoutines', 'customExercises', 'bodyMeasurements'].every(key =>
+    Array.isArray(obj[key]) && obj[key].length === 0,
+  );
+  return total > 0 || hasEmptyBackup ? parsed : null;
 }
 
 /** Merge by id; existing entries win so an import never overwrites what's already on the device. */
 export function mergeById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {
-  const seen = new Set(existing.map(x => x.id));
-  return [...existing, ...incoming.filter(x => !seen.has(x.id))];
+  const seen = new Set(existing.map(item => item.id));
+  const merged = [...existing];
+  for (const item of incoming) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    merged.push(item);
+  }
+  return merged;
 }
 
 export const sortByDateDesc = <T extends { date: string }>(items: T[]) => [...items].sort(byDateDesc);
@@ -82,5 +137,9 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('data.ts')) {
   assert(parseBackup([log('a', '2025-01-01', '80')])?.workoutLogs.length === 1, 'old array format');
   assert(parseBackup({ bodyMeasurements: [{ id: 'm', date: '2025-01-01' }] })?.bodyMeasurements.length === 1, 'new format');
   assert(parseBackup({ foo: 1 }) === null && parseBackup([{ nope: 1 }]) === null, 'junk rejected');
+  const empty = { app: 'gym-weight-logger', version: 2, workoutLogs: [], customRoutines: [], customExercises: [], bodyMeasurements: [] };
+  assert(parseBackup(empty) !== null, 'a clean profile backup can be restored');
+  assert(parseBackup({ ...empty, workoutLogs: [{ ...log('a', '2025-01-01', '80'), exercises: [null] }] }) === null, 'malformed nested workouts are rejected');
+  assert(mergeById([], [{ id: 'new' }, { id: 'new' }]).length === 1, 'duplicates inside an import are ignored');
   console.log('data.ts: all checks passed');
 }

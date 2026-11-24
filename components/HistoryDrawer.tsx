@@ -1,20 +1,22 @@
 import React, { useEffect, useRef } from 'react';
-import WorkoutHistory from './WorkoutHistory';
+import WorkoutHistory, { type HistoryView } from './WorkoutHistory';
 import { WorkoutLog, Profile, ProfilePRs } from '../types';
 
 interface HistoryDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   logs: WorkoutLog[];
-  onImportLogs: (data: unknown) => void;
+  onImportLogs: (data: unknown) => string;
   onDeleteLog: (logId: string) => void;
   onUpdateLog: (log: WorkoutLog) => void;
-  onExportLogs: () => void;
+  onExportLogs: () => Promise<boolean>;
   activeProfile: Profile | undefined;
   personalRecords: ProfilePRs;
+  view: HistoryView;
+  onViewChange: (view: HistoryView) => void;
 }
 
-const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, onImportLogs, onExportLogs, activeProfile, personalRecords, onDeleteLog, onUpdateLog }) => {
+const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, onImportLogs, onExportLogs, activeProfile, personalRecords, onDeleteLog, onUpdateLog, view, onViewChange }) => {
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,7 +70,7 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, on
         aria-labelledby="history-drawer-title"
       >
         <div className="h-full flex flex-col">
-            <WorkoutHistory logs={logs} onImportLogs={onImportLogs} onExportLogs={onExportLogs} onClose={onClose} activeProfile={activeProfile} personalRecords={personalRecords} onDeleteLog={onDeleteLog} onUpdateLog={onUpdateLog} />
+            <WorkoutHistory view={view} onViewChange={onViewChange} logs={logs} onImportLogs={onImportLogs} onExportLogs={onExportLogs} onClose={onClose} activeProfile={activeProfile} personalRecords={personalRecords} onDeleteLog={onDeleteLog} onUpdateLog={onUpdateLog} />
         </div>
       </div>
     </>

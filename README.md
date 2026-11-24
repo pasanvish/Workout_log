@@ -66,8 +66,8 @@ The project is organized into a clear and logical structure:
 All your workout data is stored in your browser's `localStorage` under the key `workoutLogs`.
 
 - **Privacy**: Your data is 100% private and never sent to any server.
-- **Backup**: It is highly recommended to use the **Export** feature regularly to back up your data. This downloads a `gym-workout-logs-YYYY-MM-DD.json` file to your computer.
-- **Restore**: You can restore your data on any device or browser using the **Import** feature and selecting a previously exported JSON file.
+- **Backup**: It is highly recommended to use the **Export** feature regularly to back up your data. Choose **Full backup (.json)** to export the active profile’s workouts, routines, measurements, and appearance. Android opens a Save As dialog.
+- **Restore**: Use **Import backup** to restore a Gym Logger JSON file into the selected profile. Existing entries keep their values. **Workout report (.html)** exports a readable report that can be opened and printed in a browser.
 
 ## 🤝 Contributing
 
