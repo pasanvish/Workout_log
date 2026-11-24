@@ -6,13 +6,15 @@ interface HistoryDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   logs: WorkoutLog[];
-  onImportLogs: (logs: WorkoutLog[]) => void;
+  onImportLogs: (data: unknown) => void;
+  onDeleteLog: (logId: string) => void;
+  onUpdateLog: (log: WorkoutLog) => void;
   onExportLogs: () => void;
   activeProfile: Profile | undefined;
   personalRecords: ProfilePRs;
 }
 
-const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, onImportLogs, onExportLogs, activeProfile, personalRecords }) => {
+const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, onImportLogs, onExportLogs, activeProfile, personalRecords, onDeleteLog, onUpdateLog }) => {
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, on
         aria-labelledby="history-drawer-title"
       >
         <div className="h-full flex flex-col">
-            <WorkoutHistory logs={logs} onImportLogs={onImportLogs} onExportLogs={onExportLogs} onClose={onClose} activeProfile={activeProfile} personalRecords={personalRecords} />
+            <WorkoutHistory logs={logs} onImportLogs={onImportLogs} onExportLogs={onExportLogs} onClose={onClose} activeProfile={activeProfile} personalRecords={personalRecords} onDeleteLog={onDeleteLog} onUpdateLog={onUpdateLog} />
         </div>
       </div>
     </>

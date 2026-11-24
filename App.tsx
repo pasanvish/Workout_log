@@ -5,6 +5,7 @@ import ProfileManager from './components/ProfileManager';
 import PRNotificationModal from './components/PRNotificationModal';
 import { WorkoutLog, Profile, CustomRoutine, CustomExercise, AllPRs, BodyMeasurementLog } from './types';
 import BodyMeasurements from './components/BodyMeasurements';
+import { recomputePRs, parseBackup, mergeById, sortByDateDesc, Backup } from './data';
 
 const App: React.FC = () => {
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
@@ -123,31 +124,58 @@ const App: React.FC = () => {
     setBodyMeasurements(prev => ({ ...prev, [activeProfileId]: newLogs }));
   }, [activeProfileId, bodyMeasurements]);
 
-  const handleImportLogs = useCallback((importedLogs: WorkoutLog[]) => {
+  const replaceLogs = useCallback((profileId: string, logs: WorkoutLog[]) => {
+    const { logs: flagged, prs } = recomputePRs(logs);
+    setWorkoutLogs(prev => ({ ...prev, [profileId]: flagged }));
+    setPersonalRecords(prev => ({ ...prev, [profileId]: prs }));
+  }, []);
+
+  const deleteWorkoutLog = useCallback((logId: string) => {
     if (!activeProfileId) return;
-    if (Array.isArray(importedLogs) && (importedLogs.length === 0 || (importedLogs[0].id && importedLogs[0].date))) {
-      const sortedLogs = importedLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setWorkoutLogs(prev => ({...prev, [activeProfileId]: sortedLogs}));
-      alert(`${importedLogs.length} workout logs imported successfully for ${activeProfile?.name}! This will not recalculate PRs.`);
-      setIsHistoryDrawerOpen(true);
-    } else {
-      alert('Import failed. The selected file is not valid workout log data.');
+    replaceLogs(activeProfileId, activeLogs.filter(l => l.id !== logId));
+  }, [activeProfileId, activeLogs, replaceLogs]);
+
+  const updateWorkoutLog = useCallback((log: WorkoutLog) => {
+    if (!activeProfileId) return;
+    replaceLogs(activeProfileId, activeLogs.map(l => l.id === log.id ? log : l));
+  }, [activeProfileId, activeLogs, replaceLogs]);
+
+  const handleImportLogs = useCallback((data: unknown) => {
+    if (!activeProfileId) return;
+    const backup = parseBackup(data);
+    if (!backup) {
+      alert('Import failed. The selected file is not a valid Gym Logger backup.');
+      return;
     }
-  }, [activeProfileId, activeProfile?.name]);
+    const logs = mergeById(activeLogs, backup.workoutLogs);
+    const added = logs.length - activeLogs.length;
+    replaceLogs(activeProfileId, logs);
+    setCustomRoutines(prev => ({ ...prev, [activeProfileId]: mergeById(prev[activeProfileId] || [], backup.customRoutines) }));
+    setCustomExercises(prev => ({ ...prev, [activeProfileId]: mergeById(prev[activeProfileId] || [], backup.customExercises) }));
+    setBodyMeasurements(prev => ({ ...prev, [activeProfileId]: sortByDateDesc(mergeById(prev[activeProfileId] || [], backup.bodyMeasurements)) }));
+    alert(`Import complete for ${activeProfile?.name}: ${added} new workout${added === 1 ? '' : 's'} added. Nothing already on this device was overwritten.`);
+    setIsHistoryDrawerOpen(true);
+  }, [activeProfileId, activeProfile?.name, activeLogs, replaceLogs]);
 
   const handleExportLogs = useCallback(() => {
-    if (!activeProfileId || !activeProfile || activeLogs.length === 0) {
-        alert("No data to export for the current profile.");
-        return;
-    }
-    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(activeLogs, null, 2))}`;
-    const link = document.createElement("a");
-    link.href = jsonString;
-    const profileName = activeProfile.name.replace(/\s/g, '_');
-    link.download = `gym-logs-${profileName}-${new Date().toISOString().split('T')[0]}.json`;
+    if (!activeProfile) return;
+    const backup: Backup = {
+      app: 'gym-weight-logger',
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      profileName: activeProfile.name,
+      workoutLogs: activeLogs,
+      customRoutines: activeRoutines,
+      customExercises: activeCustomExercises,
+      bodyMeasurements: activeBodyMeasurements,
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `gym-backup-${activeProfile.name.replace(/\s/g, '_')}-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
-    link.remove();
-  }, [activeProfileId, activeProfile, activeLogs]);
+    URL.revokeObjectURL(url);
+  }, [activeProfile, activeLogs, activeRoutines, activeCustomExercises, activeBodyMeasurements]);
 
   const addProfile = (name: string) => {
     const newProfile: Profile = { id: Date.now().toString(), name };
@@ -256,6 +284,8 @@ const App: React.FC = () => {
         logs={activeLogs}
         onImportLogs={handleImportLogs}
         onExportLogs={handleExportLogs}
+        onDeleteLog={deleteWorkoutLog}
+        onUpdateLog={updateWorkoutLog}
         activeProfile={activeProfile}
         personalRecords={activePRs}
       />

@@ -5,7 +5,9 @@ import BadgesDisplay from './BadgesDisplay';
 
 interface WorkoutHistoryProps {
   logs: WorkoutLog[];
-  onImportLogs: (logs: WorkoutLog[]) => void;
+  onImportLogs: (data: unknown) => void;
+  onDeleteLog: (logId: string) => void;
+  onUpdateLog: (log: WorkoutLog) => void;
   onExportLogs: () => void;
   onClose: () => void;
   activeProfile: Profile | undefined;
@@ -50,14 +52,37 @@ const InfoTooltip: React.FC<{text: string}> = ({ text }) => (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-secondary" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
         </svg>
-        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-60 p-2 bg-card-dark text-text-primary text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+        <div className="absolute bottom-full right-0 mb-2 w-60 p-2 bg-card-dark text-text-primary text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
             {text}
         </div>
     </div>
 );
 
 
-const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords }) => {
+const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords, onDeleteLog, onUpdateLog }) => {
+  const [draft, setDraft] = useState<WorkoutLog | null>(null);
+
+  const editSet = (exIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
+    setDraft(d => d && {
+      ...d,
+      exercises: d.exercises.map((ex, i) => i !== exIndex ? ex : {
+        ...ex,
+        sets: ex.sets.map((set, j) => j !== setIndex ? set : { ...set, [field]: value.replace(/[^0-9.]/g, '') }),
+      }),
+    });
+  };
+
+  const handleDelete = (log: WorkoutLog) => {
+    if (confirm(`Delete the ${log.routineName} session from ${new Date(log.date).toLocaleDateString()}? This can't be undone.`)) {
+      onDeleteLog(log.id);
+    }
+  };
+
+  const saveDraft = () => {
+    if (draft) onUpdateLog(draft);
+    setDraft(null);
+  };
+
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string>('all');
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
@@ -380,9 +405,9 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                         Export
                         <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
-                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-gray-600 ring-1 ring-black ring-opacity-5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 invisible group-hover:visible">
+                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-gray-600 ring-1 ring-black ring-opacity-5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 z-20 invisible group-hover:visible group-focus-within:visible">
                         <div className="py-1" role="menu" aria-orientation="vertical">
-                        <a href="#" onClick={(e) => { e.preventDefault(); onExportLogs(); }} className="block px-4 py-2 text-sm text-text-primary hover:bg-gray-700" role="menuitem">as JSON (.json)</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); onExportLogs(); }} className="block px-4 py-2 text-sm text-text-primary hover:bg-gray-700" role="menuitem">Full backup (.json)</a>
                         <a href="#" onClick={(e) => { e.preventDefault(); handleExportDoc(); }} className="block px-4 py-2 text-sm text-text-primary hover:bg-gray-700" role="menuitem">as Document (.doc)</a>
                         </div>
                     </div>
@@ -424,7 +449,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                 >
                     <div className="overflow-hidden">
                         <div className="p-5 pt-0 space-y-4 border-t border-border-color/30">
-                          {log.exercises.map((exercise, index) => (
+                          {(draft?.id === log.id ? draft : log).exercises.map((exercise, index) => (
                             <div key={index} className="bg-background-dark/50 p-3 rounded-md">
                               <p className="font-semibold text-text-primary mb-2">{exercise.name}</p>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm">
@@ -432,6 +457,13 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                                   <div key={setIndex} className="flex items-center gap-2 bg-background-light p-2 rounded-md">
                                       <span className="font-mono text-xs text-text-secondary font-bold">SET {setIndex+1}</span>
                                       <div className="flex-grow text-right flex items-center justify-end gap-2">
+                                          {draft?.id === log.id ? (
+                                            <div className="flex items-center gap-1">
+                                              <input type="number" inputMode="decimal" value={set.weight} onChange={e => editSet(index, setIndex, 'weight', e.target.value)} className="w-14 bg-background-dark border border-border-color rounded p-1 text-right" aria-label={`${exercise.name} set ${setIndex + 1} weight`} />
+                                              <span className="text-text-secondary">x</span>
+                                              <input type="number" inputMode="numeric" value={set.reps} onChange={e => editSet(index, setIndex, 'reps', e.target.value)} className="w-12 bg-background-dark border border-border-color rounded p-1 text-right" aria-label={`${exercise.name} set ${setIndex + 1} reps`} />
+                                            </div>
+                                          ) : (
                                           <div>
                                             <span className="font-semibold text-text-primary">{set.weight}</span>
                                             <span className="text-xs text-text-secondary ml-1">kg</span>
@@ -439,13 +471,27 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                                             <span className="font-semibold text-text-primary">{set.reps}</span>
                                             <span className="text-xs text-text-secondary ml-1">reps</span>
                                           </div>
-                                          {set.isPR && <div title="New Personal Record!"><MedalIcon /></div>}
+                                          )}
+                                          {draft?.id !== log.id && set.isPR && <div title="New Personal Record!"><MedalIcon /></div>}
                                       </div>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           ))}
+                          <div className="flex justify-end gap-2">
+                            {draft?.id === log.id ? (
+                              <>
+                                <button onClick={() => setDraft(null)} className="px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600">Cancel</button>
+                                <button onClick={saveDraft} className="px-3 py-2 rounded-md text-sm font-semibold bg-brand-primary text-white hover:bg-brand-secondary">Save changes</button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => setDraft(log)} className="px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-text-secondary hover:bg-gray-600">Edit</button>
+                                <button onClick={() => handleDelete(log)} className="px-3 py-2 rounded-md text-sm font-medium bg-card-dark text-red-400 hover:bg-red-900/40">Delete</button>
+                              </>
+                            )}
+                          </div>
                         </div>
                     </div>
                 </div>
