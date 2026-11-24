@@ -242,7 +242,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setActiveProfileId(null)}
-              className="h-10 px-3 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-card-dark transition-colors"
+              className="panel-action"
             >
               Switch
             </button>
@@ -264,12 +264,12 @@ const App: React.FC = () => {
           </div>
         )}
         <div className="hidden md:block max-w-4xl mx-auto mb-6">
-            <div className="flex border-b border-border-color">
+            <div className="segmented-control">
             {tabs.map(t => (
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={`px-6 py-3 text-sm font-bold tracking-wider uppercase transition-colors w-1/2 ${activeTab === t.id ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                aria-pressed={activeTab === t.id}
               >
                 {t.id === 'logger' ? 'Workouts' : 'Measurements'}
               </button>
@@ -296,13 +296,13 @@ const App: React.FC = () => {
             )}
         </div>
       </main>
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-background-light/95 backdrop-blur-sm border-t border-border-color/60 pb-[env(safe-area-inset-bottom)]">
-        <div className="grid grid-cols-3">
+      <nav aria-label="Main navigation" className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-background-light/95 backdrop-blur-sm border-t border-border-color/60 pb-[env(safe-area-inset-bottom)]">
+        <div className="grid grid-cols-3 gap-1 px-2 py-1.5">
           {tabs.map(t => (
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`flex flex-col items-center gap-1 py-2.5 text-xs font-semibold transition-colors ${activeTab === t.id ? 'text-brand-primary' : 'text-text-secondary'}`}
+              className="mobile-nav-item"
               aria-current={activeTab === t.id ? 'page' : undefined}
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={t.icon} /></svg>
@@ -311,7 +311,7 @@ const App: React.FC = () => {
           ))}
           <button
             onClick={() => setIsHistoryDrawerOpen(true)}
-            className="flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-text-secondary"
+            className="mobile-nav-item"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             History

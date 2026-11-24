@@ -1,72 +1,52 @@
-
 import React, { useState } from 'react';
 import { Profile } from '../types';
 
 interface ProfileManagerProps {
-    profiles: Profile[];
-    onAddProfile: (name: string) => void;
-    onSelectProfile: (id: string) => void;
+  profiles: Profile[];
+  onAddProfile: (name: string) => void;
+  onSelectProfile: (id: string) => void;
 }
 
-const ProfileManager: React.FC<ProfileManagerProps> = ({ profiles, onAddProfile, onSelectProfile }) => {
-    const [newProfileName, setNewProfileName] = useState('');
+export default function ProfileManager({ profiles, onAddProfile, onSelectProfile }: ProfileManagerProps) {
+  const [newProfileName, setNewProfileName] = useState('');
+  const name = newProfileName.trim();
 
-    const handleAddProfile = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (newProfileName.trim()) {
-            onAddProfile(newProfileName.trim());
-            setNewProfileName('');
-        }
-    };
-
-    return (
-        <div className="min-h-screen bg-background-dark flex items-center justify-center p-4">
-            <div className="welcome-card w-full max-w-md mx-auto bg-background-light p-6 sm:p-8 rounded-3xl shadow-2xl border border-border-color">
-                <div className="text-center mb-8">
-                    <img src="./icon.svg" alt="" className="w-14 h-14 rounded-2xl mx-auto mb-5" /><p className="eyebrow mb-3">MAKE EVERY REP COUNT</p><h1 className="text-3xl font-bold text-text-primary tracking-wider">Welcome to Gym Logger</h1>
-                    <p className="text-text-secondary mt-2">Select a profile or create a new one to get started.</p>
-                </div>
-
-                {profiles.length > 0 && (
-                    <div className="mb-8">
-                        <h2 className="text-lg font-semibold text-text-primary mb-3 text-center">Select Profile</h2>
-                        <div className="space-y-3">
-                            {profiles.map(profile => (
-                                <button
-                                    key={profile.id}
-                                    onClick={() => onSelectProfile(profile.id)}
-                                    className="w-full text-left p-4 rounded-lg bg-card-dark hover:bg-gray-600 text-text-primary font-semibold transition-all duration-200 transform hover:scale-105"
-                                >
-                                    {profile.name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-                
-                <div>
-                    <h2 className="text-lg font-semibold text-text-primary mb-3 text-center">{profiles.length > 0 ? "Or Create a New One" : "Create Your First Profile"}</h2>
-                    <form onSubmit={handleAddProfile} className="flex gap-3">
-                        <input
-                            type="text"
-                            value={newProfileName}
-                            onChange={(e) => setNewProfileName(e.target.value)}
-                            placeholder="Enter profile name..."
-                            className="min-w-0 flex-1 bg-background-dark border-2 border-border-color rounded-md p-3 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors duration-200"
-                            aria-label="New profile name"
-                        />
-                        <button 
-                            type="submit"
-                            className="bg-gradient-to-r from-brand-primary to-cyan-500 hover:from-brand-secondary hover:to-cyan-600 text-white font-bold py-3 px-5 rounded-lg transition-all duration-300 shadow-lg hover:shadow-brand-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={!newProfileName.trim()}
-                        >
-                            Add
-                        </button>
-                    </form>
-                </div>
+  return (
+    <main className="profile-page px-4 pb-8 pt-[max(2rem,env(safe-area-inset-top))]">
+      <div className="mx-auto w-full max-w-lg space-y-4">
+        <header className="workout-hero">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-extrabold tracking-tight">Gym Logger</h1>
+            <p className="mt-2 text-sm text-text-secondary">Choose a profile to open your workout log.</p>
+          </div>
+          <img src="./icon.svg" alt="" className="size-20 shrink-0 rounded-2xl border border-border-color sm:size-24" />
+        </header>
+        {profiles.length > 0 && (
+          <section className="tracking-panel">
+            <h2 className="mb-3 text-lg font-semibold">Your profiles</h2>
+            <div className="grid gap-2.5">
+              {profiles.map(profile => (
+                <button type="button" key={profile.id} onClick={() => onSelectProfile(profile.id)} className="profile-option">
+                  <span aria-hidden="true" className="session-date !size-10 text-sm font-bold">{Array.from(profile.name.trim())[0]?.toLocaleUpperCase() || '?'}</span>
+                  <span className="min-w-0 flex-1 break-words text-sm font-semibold">{profile.name}</span>
+                  <span aria-hidden="true" className="text-brand-light">→</span>
+                </button>
+              ))}
             </div>
-        </div>
-    );
+          </section>
+        )}
+        <section className="tracking-panel">
+          <h2 className="mb-3 text-lg font-semibold">{profiles.length ? 'Add a profile' : 'Create your first profile'}</h2>
+          <form onSubmit={event => { event.preventDefault(); if (name) onAddProfile(name); }} className="flex items-end gap-2">
+            <label className="min-w-0 flex-1 text-xs font-semibold text-text-secondary">
+              Profile name
+              <input value={newProfileName} onChange={event => setNewProfileName(event.target.value)} className="track-input mt-1.5 w-full"
+                placeholder="Your name" autoComplete="off" />
+            </label>
+            <button type="submit" className="panel-action panel-action-primary disabled:opacity-40" disabled={!name}>Create</button>
+          </form>
+        </section>
+      </div>
+    </main>
+  );
 }
-
-export default ProfileManager;

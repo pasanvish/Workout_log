@@ -1,9 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { CustomRoutine, WorkoutLog, CustomExercise } from '../types';
-import { MASTER_EXERCISE_LIST } from '../constants';
-import ExerciseArtwork from './ExerciseArtwork';
-import ExerciseMuscles from './ExerciseMuscles';
-import { getExerciseDetails } from '../exerciseDetails';
+import ExerciseLibrary from './ExerciseLibrary';
+import ModalFrame from './ModalFrame';
 import CreateExerciseModal from './CreateExerciseModal';
 
 interface RoutineEditorProps {
@@ -69,22 +67,6 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionAnchor, setSuggestionAnchor] = useState<string | null>(null);
   const [isCreateExerciseModalOpen, setCreateExerciseModalOpen] = useState(false);
-
-  const combinedExerciseList = useMemo(() => {
-    // FIX: Explicitly cast the type after JSON.parse to avoid it being inferred as `any`.
-    // This ensures type safety throughout the component.
-    const combined = JSON.parse(JSON.stringify(MASTER_EXERCISE_LIST)) as Record<string, string[]>;
-    customExercises.forEach(ex => {
-        if (!combined[ex.category]) {
-            combined[ex.category] = [];
-        }
-        if (!combined[ex.category].includes(ex.name)) {
-            combined[ex.category].push(ex.name);
-        }
-    });
-    return combined;
-  }, [customExercises]);
-
 
   useEffect(() => {
     const exercises = Array.from(selectedExercises);
@@ -165,157 +147,45 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
     setCreateExerciseModalOpen(false);
   };
 
-  const filteredExercises = useMemo(() => {
-    if (!searchTerm) {
-      return combinedExerciseList;
-    }
-    const lowercasedFilter = searchTerm.toLowerCase();
-    const filtered: Record<string, string[]> = {};
-    for (const category in combinedExerciseList) {
-      const matchingExercises = combinedExerciseList[category].filter(exercise =>
-        exercise.toLowerCase().includes(lowercasedFilter)
-      );
-      if (matchingExercises.length > 0) {
-        filtered[category] = matchingExercises;
-      }
-    }
-    return filtered;
-  }, [searchTerm, combinedExerciseList]);
-
   if (!isOpen) return null;
 
   return (
     <>
-    <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center p-4"
-      onClick={handleClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="bg-background-light w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        <header className="p-4 border-b border-border-color flex-shrink-0">
-          <h2 className="text-xl font-bold text-text-primary">Create New Routine</h2>
-        </header>
-
-        <main className="p-6 space-y-4 overflow-y-auto">
-          <div>
-            <label htmlFor="routineName" className="block text-sm font-medium text-text-secondary mb-1">Routine Name</label>
-            <input
-              id="routineName"
-              type="text"
-              value={routineName}
-              onChange={e => setRoutineName(e.target.value)}
-              placeholder="e.g., Push Day, Leg Power"
-              className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors"
-            />
-          </div>
-          <div className="flex gap-2 items-end">
-             <div className="flex-grow">
-                <label htmlFor="search" className="block text-sm font-medium text-text-secondary mb-1">Search Exercises</label>
-                <input
-                id="search"
-                type="text"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Search or add new..."
-                className="w-full bg-background-dark border-2 border-border-color rounded-md p-2 text-sm focus:ring-brand-primary focus:border-brand-primary transition-colors"
-                />
-            </div>
-            <button onClick={() => setCreateExerciseModalOpen(true)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-colors h-[40px] flex-shrink-0">
-                Create New
-            </button>
-          </div>
-
+      <ModalFrame title="New routine" onClose={handleClose} wide footer={
+        <>
+          <span className="mr-auto text-xs text-text-secondary" role="status">{selectedExercises.size} selected</span>
+          <button type="button" onClick={handleClose} className="panel-action">Cancel</button>
+          <button type="button" onClick={handleSave} className="panel-action panel-action-primary disabled:opacity-40"
+            disabled={!routineName.trim() || selectedExercises.size === 0}>Save routine</button>
+        </>
+      }>
+        <div className="space-y-4">
+          <label className="block rounded-xl border border-border-color/70 bg-background-dark p-3 text-xs font-semibold text-text-secondary">
+            Routine name
+            <input value={routineName} onChange={event => setRoutineName(event.target.value)} placeholder="e.g., Push day"
+              className="track-input mt-1.5 w-full" />
+          </label>
           {suggestionAnchor && unselectedSuggestions.length > 0 && (
-            <div className="border-t border-border-color pt-4 animate-fade-in">
-                <div className="flex justify-between items-center mb-3">
-                    <div>
-                        <h3 className="text-md font-semibold text-brand-light">Smart Suggestions</h3>
-                        <p className="text-xs text-text-secondary mt-1">Based on your history with <span className="font-bold text-text-primary">'{suggestionAnchor}'</span>.</p>
-                    </div>
-                    {unselectedSuggestions.length > 0 && (
-                         <button
-                            onClick={handleAddAllSuggestions}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold bg-brand-primary/20 text-brand-light hover:bg-brand-primary/40 transition-colors"
-                        >
-                            <PlusIcon />
-                            <span>Add All</span>
-                        </button>
-                    )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    {unselectedSuggestions.map(exercise => (
-                        <button
-                            key={exercise}
-                            onClick={() => handleToggleExercise(exercise)}
-                            className="p-2 rounded-md text-sm bg-card-dark hover:bg-gray-600 transition-colors flex items-center gap-2 text-text-secondary hover:text-text-primary"
-                        >
-                            <PlusIcon />
-                            <span>{exercise}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-          )}
-
-          <div className="space-y-4">
-            {Object.entries(filteredExercises).map(([category, exercises]) => (
-              <div key={category}>
-                <h3 className="text-md font-semibold text-brand-light mb-2">{category}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {exercises.map(exercise => (
-                    <button
-                      key={exercise}
-                      onClick={() => handleToggleExercise(exercise)}
-                      aria-pressed={selectedExercises.has(exercise)}
-                      className={`picker-card ${selectedExercises.has(exercise) ? 'is-selected' : ''}`}
-                    >
-                      <ExerciseArtwork name={exercise} className="picker-art" />
-                      <span className="flex-1 min-w-0">
-                        <span className="block font-semibold text-sm">{exercise}</span>
-                        <span className="block text-xs text-text-secondary mt-1 leading-relaxed">{getExerciseDetails(exercise).description}</span>
-                        <ExerciseMuscles name={exercise} compact />
-                      </span>
-                      <span className="text-brand-light" aria-hidden="true">{selectedExercises.has(exercise) ? '✓' : '+'}</span>
-                    </button>
-                  ))}
-                </div>
+            <section className="tracking-panel">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">Often paired with {suggestionAnchor}</h3>
+                <button type="button" onClick={handleAddAllSuggestions} className="category-chip">Add all</button>
               </div>
-            ))}
-             {Object.keys(filteredExercises).length === 0 && searchTerm && (
-                <div className="text-center text-text-secondary p-4 bg-background-dark rounded-md">
-                    <p>No exercises found for "{searchTerm}".</p>
-                    <button onClick={() => setCreateExerciseModalOpen(true)} className="text-brand-light font-semibold mt-2">
-                        Create it now?
-                    </button>
-                </div>
-            )}
-          </div>
-        </main>
-        
-        <footer className="p-4 border-t border-border-color flex justify-end gap-3 flex-shrink-0">
-          <button onClick={handleClose} className="px-4 py-2 rounded-lg text-sm font-semibold bg-card-dark hover:bg-gray-600 text-text-primary transition-colors">
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 rounded-lg text-sm font-bold bg-brand-primary hover:bg-brand-secondary text-white transition-colors disabled:opacity-50"
-            disabled={!routineName.trim() || selectedExercises.size === 0}
-          >
-            Save Routine
-          </button>
-        </footer>
-      </div>
-    </div>
-    <CreateExerciseModal
-        isOpen={isCreateExerciseModalOpen}
-        onClose={() => setCreateExerciseModalOpen(false)}
-        onSave={handleCreateExerciseSave}
-        initialValue={searchTerm}
-    />
+              <div className="flex flex-wrap gap-2">
+                {unselectedSuggestions.map(exercise => (
+                  <button type="button" key={exercise} onClick={() => handleToggleExercise(exercise)} className="category-chip selection-chip">
+                    <PlusIcon /> {exercise}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          <ExerciseLibrary search={searchTerm} onSearch={setSearchTerm} onCreate={() => setCreateExerciseModalOpen(true)}
+            customExercises={customExercises} selected={selectedExercises} onToggle={handleToggleExercise} />
+        </div>
+      </ModalFrame>
+      <CreateExerciseModal isOpen={isCreateExerciseModalOpen} onClose={() => setCreateExerciseModalOpen(false)}
+        onSave={handleCreateExerciseSave} initialValue={searchTerm} customExercises={customExercises} />
     </>
   );
 };

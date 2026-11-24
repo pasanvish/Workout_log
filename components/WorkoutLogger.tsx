@@ -60,6 +60,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
   const [instructionModalState, setInstructionModalState] = useState<{isOpen: boolean, exerciseName: string | null}>({isOpen: false, exerciseName: null});
 
   const handleRoutineSelect = (routine: CustomRoutine) => {
+    if (selectedRoutine?.id === routine.id) return;
     setSelectedRoutine(routine);
     setExercises(routine.exercises.map(name => ({ name, sets: [{ id: newSetId(), weight: '', reps: '' }] })));
   };
@@ -122,6 +123,10 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
     setInstructionModalState({isOpen: true, exerciseName});
   };
 
+  const sessionSets = exercises.flatMap(exercise => exercise.sets);
+  const loggedSets = sessionSets.filter(set => set.weight && set.reps).length;
+  const progress = sessionSets.length ? loggedSets / sessionSets.length : 0;
+
   return (
     <>
       <div className="workout-shell space-y-8 max-w-4xl mx-auto">
@@ -167,7 +172,16 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         
         {selectedRoutine ? (
           <div>
-            <h3 className="text-lg font-semibold text-text-primary mb-3">Your session · <span className="text-brand-light">{selectedRoutine.name}</span></h3>
+            <div className="tracking-panel mb-4">
+              <div className="flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-brand-light">Active session</p>
+                  <h3 className="mt-1 break-words text-xl font-bold">{selectedRoutine.name}</h3>
+                </div>
+                <span className="shrink-0 text-xs tabular-nums text-text-secondary">{loggedSets} / {sessionSets.length} sets logged</span>
+              </div>
+              <progress className="session-progress mt-3" aria-label="Sets logged" value={progress} max={1} />
+            </div>
             <div className="space-y-4">
               {exercises.map(exercise => (
                  <div key={exercise.name} className="exercise-card">
@@ -209,8 +223,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         ) : (
              <div className="empty-session">
                 <span className="routine-symbol mx-auto mb-4">＋</span>
-                <h3 className="font-semibold text-lg mb-2">Your next great session starts here</h3>
-                <p className="text-sm text-text-secondary">Pick a routine above, or build one with your favorite exercises.</p>
+                <p className="text-sm text-text-secondary">Choose a routine to start logging sets.</p>
             </div>
         )}
 
@@ -244,6 +257,8 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         isOpen={isFeedbackModalOpen}
         onClose={() => setIsFeedbackModalOpen(false)}
         onConfirm={handleConfirmSave}
+        routineName={pendingLog?.routineName}
+        setCount={loggedSets}
       />
       <ExercisePickerModal
         isOpen={isExercisePickerOpen}

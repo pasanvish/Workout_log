@@ -18,6 +18,7 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, on
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
@@ -28,17 +29,18 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, on
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose]);
+  }, [isOpen, onClose]);
 
   // Prevent background scroll when drawer is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    if (!isOpen) return;
+    const overflow = document.body.style.overflow;
+    const trigger = document.activeElement;
+    document.body.style.overflow = 'hidden';
+    drawerRef.current?.querySelector('button')?.focus();
     return () => {
-       document.body.style.overflow = 'unset';
+      document.body.style.overflow = overflow;
+      if (trigger instanceof HTMLElement) trigger.focus();
     };
   }, [isOpen]);
 
@@ -56,11 +58,13 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, on
       {/* Drawer Panel */}
       <div
         ref={drawerRef}
-        className={`fixed top-0 right-0 h-full w-full max-w-2xl bg-background-light shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-dvh w-full max-w-2xl bg-background-dark shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        inert={!isOpen}
+        aria-hidden={!isOpen || undefined}
         role="dialog"
-        aria-modal="true"
+        aria-modal={isOpen || undefined}
         aria-labelledby="history-drawer-title"
       >
         <div className="h-full flex flex-col">
