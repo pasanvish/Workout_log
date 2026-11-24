@@ -1,9 +1,0 @@
-{
-  "short_name": "Gym Logger",
-  "name": "Gym Weight Logger",
-  "description": "An application to log your weights from your gym training sessions. Track your progress for different workout days and exercises over time.",
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#111827",
-  "background_color": "#111827"
-}
