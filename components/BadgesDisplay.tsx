@@ -1,4 +1,5 @@
 import React from 'react';
+import BadgeEmblem from './BadgeEmblem';
 import { WorkoutLog } from '../types';
 import { BADGES } from '../badges';
 
@@ -19,9 +20,7 @@ const BadgesDisplay: React.FC<BadgesDisplayProps> = ({ logs }) => {
           const progress = badge.progress?.(logs);
           return (
             <li key={badge.id} className={`min-w-0 rounded-xl border p-3 ${isEarned ? 'border-brand-primary/40 bg-brand-primary/10' : 'border-border-color/60 bg-background-dark'}`}>
-              <div className={`mb-2 flex size-10 items-center justify-center rounded-lg ${isEarned ? 'bg-brand-primary/15 text-brand-light' : 'bg-card-dark text-text-secondary'}`}>
-                <badge.icon className="size-6" aria-hidden="true" />
-              </div>
+              <div className="mb-2"><BadgeEmblem badge={badge} earned={isEarned} /></div>
               <h5 className="text-sm font-semibold">{badge.name}</h5>
               <span className={`text-[11px] font-semibold ${isEarned ? 'text-brand-light' : 'text-text-secondary'}`}>{isEarned ? 'Unlocked' : 'Locked'}</span>
               <p className="mt-1 text-xs leading-relaxed text-text-secondary">{badge.description}</p>

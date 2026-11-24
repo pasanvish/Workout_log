@@ -4,7 +4,10 @@ import ExerciseArtwork from './ExerciseArtwork';
 import TrainingWelcome from './TrainingWelcome';
 import ExerciseMuscles from './ExerciseMuscles';
 import { getExerciseDetails } from '../exerciseDetails';
-import ExerciseLogger, { newSetId } from './ExerciseLogger';
+import ExerciseLogger from './ExerciseLogger';
+import RestTimer from './RestTimer';
+import { defaultTracking, emptySet, formatSet, isCompleteSet, trackingOf } from '../setTracking';
+import { completedSetCount } from '../training';
 import RoutineEditor from './RoutineEditor';
 import WorkoutFeedbackModal from './WorkoutFeedbackModal';
 import ExercisePickerModal from './ExercisePickerModal';
@@ -37,23 +40,27 @@ const InfoIcon = () => (
 
 
 const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs, customExercises, onAddCustomExercise, draftKey, profile, onAchievements }) => {
-  const [draft] = useState<{ routine: CustomRoutine; exercises: Exercise[] } | null>(() => {
+  const [draft] = useState<{ routine: CustomRoutine; exercises: Exercise[]; restEndsAt?: number } | null>(() => {
     try { return JSON.parse(localStorage.getItem(draftKey) || 'null'); } catch { return null; }
   });
   const [selectedRoutine, setSelectedRoutine] = useState<CustomRoutine | null>(draft?.routine ?? null);
-  const [exercises, setExercises] = useState<Exercise[]>(draft?.exercises ?? []);
+  const [exercises, setExercises] = useState<Exercise[]>(() => (draft?.exercises ?? []).map(exercise => ({
+    ...exercise,
+    tracking: exercise.tracking ?? (exercise.sets.some(set => set.weight || set.reps) ? 'weight' : defaultTracking(exercise.name, customExercises)),
+  })));
+  const [restEndsAt, setRestEndsAt] = useState<number | null>(draft?.restEndsAt ?? null);
 
   useEffect(() => {
     try {
-      if (selectedRoutine) localStorage.setItem(draftKey, JSON.stringify({ routine: selectedRoutine, exercises }));
+      if (selectedRoutine) localStorage.setItem(draftKey, JSON.stringify({ routine: selectedRoutine, exercises, restEndsAt }));
       else localStorage.removeItem(draftKey);
     } catch { /* storage full or blocked: the workout still works in memory */ }
-  }, [draftKey, selectedRoutine, exercises]);
+  }, [draftKey, selectedRoutine, exercises, restEndsAt]);
 
   // Most recent sets logged for each exercise (logs are newest first).
   const lastTime = useMemo(() => {
-    const map: Record<string, { date: string; sets: Exercise['sets'] }> = {};
-    for (const log of logs) for (const ex of log.exercises) map[ex.name] ??= { date: log.date, sets: ex.sets };
+    const map: Record<string, { date: string; exercise: Exercise }> = Object.create(null);
+    for (const log of logs) for (const exercise of log.exercises) map[exercise.name] ??= { date: log.date, exercise };
     return map;
   }, [logs]);
   const [isRoutineEditorOpen, setIsRoutineEditorOpen] = useState(false);
@@ -62,10 +69,15 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
   const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false);
   const [instructionModalState, setInstructionModalState] = useState<{isOpen: boolean, exerciseName: string | null}>({isOpen: false, exerciseName: null});
 
+  const newExercise = (name: string): Exercise => ({ name, tracking: defaultTracking(name, customExercises), sets: [emptySet()] });
+
   const handleRoutineSelect = (routine: CustomRoutine) => {
     if (selectedRoutine?.id === routine.id) return;
+    if (selectedRoutine && exercises.some(exercise => exercise.sets.some(set => set.weight || set.reps || set.seconds))
+      && !confirm('Start a different routine? The sets in this workout will be cleared.')) return;
     setSelectedRoutine(routine);
-    setExercises(routine.exercises.map(name => ({ name, sets: [{ id: newSetId(), weight: '', reps: '' }] })));
+    setExercises(routine.exercises.map(newExercise));
+    setRestEndsAt(null);
   };
 
   const handleRoutineSave = (newRoutineData: Omit<CustomRoutine, 'id'>) => {
@@ -74,17 +86,30 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
     setIsRoutineEditorOpen(false);
   };
 
-  const handleSetChange = (exerciseName: string, updatedSets: { id: string; weight: string; reps: string }[]) => {
-    setExercises(prev => prev.map(ex => ex.name === exerciseName ? { ...ex, sets: updatedSets } : ex));
+  const repeatWorkout = (log: WorkoutLog) => {
+    const names = [...new Set(log.exercises.map(exercise => exercise.name))];
+    setSelectedRoutine({ id: `repeat-${log.id}`, name: log.routineName, exercises: names });
+    setExercises(names.map(name => {
+      const previous = log.exercises.find(exercise => exercise.name === name)!;
+      return {
+        name,
+        tracking: previous.tracking ?? defaultTracking(name, customExercises),
+        sets: Array.from({ length: Math.max(1, previous.sets.length) }, emptySet),
+      };
+    }));
+    setRestEndsAt(null);
   };
-  
+
   const handleInitiateSave = () => {
     if (!selectedRoutine) return;
     const newLog: Omit<WorkoutLog, 'effort'> = {
       id: new Date().toISOString(),
       date: new Date().toISOString(),
       routineName: selectedRoutine.name,
-      exercises: exercises.filter(e => e.sets.some(s => s.weight && s.reps)),
+      exercises: exercises.map(exercise => ({
+        ...exercise,
+        sets: exercise.sets.filter(set => isCompleteSet(set, trackingOf(exercise))),
+      })).filter(exercise => exercise.sets.length > 0),
     };
     if (newLog.exercises.length > 0) {
       setPendingLog(newLog);
@@ -103,14 +128,12 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
     setExercises([]);
     setSelectedRoutine(null);
     setPendingLog(null);
+    setRestEndsAt(null);
     setIsFeedbackModalOpen(false);
   };
 
   const handleAddExercises = (exerciseNames: string[]) => {
-    const newExercises = exerciseNames.map(name => ({
-      name,
-      sets: [{ id: newSetId(), weight: '', reps: '' }]
-    }));
+    const newExercises = exerciseNames.map(newExercise);
     setExercises(prev => [...prev, ...newExercises]);
     setIsExercisePickerOpen(false);
   };
@@ -119,6 +142,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
     if (confirm('Discard this workout? The sets you entered will be lost.')) {
       setExercises([]);
       setSelectedRoutine(null);
+      setRestEndsAt(null);
     }
   };
 
@@ -127,21 +151,28 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
   };
 
   const sessionSets = exercises.flatMap(exercise => exercise.sets);
-  const loggedSets = sessionSets.filter(set => set.weight && set.reps).length;
+  const loggedSets = exercises.reduce((count, exercise) => count + exercise.sets.filter(set => isCompleteSet(set, trackingOf(exercise))).length, 0);
   const progress = sessionSets.length ? loggedSets / sessionSets.length : 0;
 
   return (
     <>
-      <div className="workout-shell space-y-8 max-w-4xl mx-auto">
+      <div className={`workout-shell space-y-8 max-w-4xl mx-auto ${restEndsAt !== null ? 'pb-14' : ''}`}>
         <TrainingWelcome profile={profile} logs={logs} onAchievements={onAchievements} />
         <div className="grid grid-cols-3 gap-2 sm:gap-4" aria-label="Training overview">
           {[
             [logs.length, 'Sessions logged'],
             [routines.length, 'Your routines'],
-            [logs.reduce((total, log) => total + log.exercises.reduce((n, ex) => n + ex.sets.filter(s => s.weight && s.reps).length, 0), 0), 'Sets logged'],
+            [logs.reduce((total, log) => total + completedSetCount(log), 0), 'Sets logged'],
           ].map(([value, label]) => <div key={label} className="stat-card"><span className="text-2xl sm:text-3xl font-bold tracking-tight">{value}</span><span className="text-xs text-text-secondary mt-1">{label}</span></div>)}
         </div>
         
+        {!selectedRoutine && logs[0] && (
+          <button type="button" onClick={() => repeatWorkout(logs[0])} className="progress-link">
+            <span className="routine-symbol shrink-0" aria-hidden="true">↻</span>
+            <span className="min-w-0 flex-1"><strong className="block text-sm">Repeat last workout</strong><span className="block truncate text-xs text-text-secondary">{logs[0].routineName}</span></span>
+            <span className="text-brand-light" aria-hidden="true">→</span>
+          </button>
+        )}
         <div>
           <h3 className="text-lg font-semibold text-text-primary mb-3">Choose your routine</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -192,7 +223,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
                           {lastTime[exercise.name] && (
                             <p className="text-xs text-text-secondary mt-0.5">
                               Last time ({new Date(lastTime[exercise.name].date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}):{' '}
-                              <span className="text-text-primary">{lastTime[exercise.name].sets.map(s => `${s.weight}×${s.reps}`).join(' · ')}</span>
+                              <span className="text-text-primary">{lastTime[exercise.name].exercise.sets.filter(set => isCompleteSet(set, trackingOf(lastTime[exercise.name].exercise))).map(set => formatSet(set, trackingOf(lastTime[exercise.name].exercise))).join(' · ')}</span>
                             </p>
                           )}
                         </div>
@@ -205,7 +236,9 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
                             <InfoIcon />
                         </button>
                     </div>
-                    <div className="p-4 sm:p-5"><ExerciseLogger exercise={exercise} onSetChange={handleSetChange} /></div>
+                    <div className="p-4 sm:p-5"><ExerciseLogger exercise={exercise} previous={lastTime[exercise.name]?.exercise}
+                      onChange={updated => setExercises(current => current.map(item => item.name === updated.name ? updated : item))}
+                      onRest={() => setRestEndsAt(Date.now() + 90_000)} /></div>
                 </div>
               ))}
                <button
@@ -241,6 +274,10 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
           </button>
         )}
       </div>
+      {selectedRoutine && restEndsAt !== null && (
+        <RestTimer endsAt={restEndsAt} onAdd={() => setRestEndsAt(previous => Math.max(previous ?? 0, Date.now()) + 15_000)}
+          onClose={() => setRestEndsAt(null)} />
+      )}
       <RoutineEditor
         isOpen={isRoutineEditorOpen}
         onClose={() => setIsRoutineEditorOpen(false)}

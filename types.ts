@@ -19,21 +19,26 @@ export interface CustomRoutine {
   exercises: string[];
 }
 
+export type TrackingMode = 'weight' | 'bodyweight' | 'duration';
+
 export interface CustomExercise {
   id: string;
   name: string;
   category: string;
+  tracking?: TrackingMode;
 }
 
 export interface Set {
     id: string;
     weight: string;
     reps: string;
+    seconds?: string;
     isPR?: boolean;
 }
 
 export interface Exercise {
-    name:string;
+    name: string;
+    tracking?: TrackingMode;
     sets: Set[];
 }
 
@@ -66,16 +71,16 @@ export interface Badge {
   name: string;
   description: string;
   icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  tone: 'mint' | 'blue' | 'violet' | 'gold' | 'coral';
   isEarned: (logs: WorkoutLog[]) => boolean;
   progress?: (logs: WorkoutLog[]) => { current: number; target: number };
 }
 
 // Personal Record Types
 export interface PR {
-  weight: number;
+  value: number;
   date: string;
 }
 
-export type ExercisePRs = Record<string, PR>; // Key: reps as string
+export type ExercisePRs = Record<string, PR>; // Key: tracking metric and, where applicable, rep count
 export type ProfilePRs = Record<string, ExercisePRs>; // Key: exerciseName
-export type AllPRs = Record<string, ProfilePRs>; // Key: profileId

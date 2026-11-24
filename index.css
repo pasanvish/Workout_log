@@ -109,3 +109,17 @@ html:has(.app-dialog[open]) { overflow: hidden; }
   .accent-option:has(input:checked) { @apply border-brand-light bg-brand-primary/10 text-text-primary; }
   .accent-option:has(input:focus-visible) { outline: 2px solid rgb(var(--brand-light)); outline-offset: 2px; }
 }
+
+@layer components {
+  .set-remove { @apply grid size-10 place-items-center rounded-lg text-text-secondary hover:bg-red-900/20 hover:text-red-300 disabled:invisible; }
+  .rest-timer { @apply fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-sm items-center gap-2 rounded-2xl border border-brand-primary/40 bg-background-light p-3 shadow-2xl md:bottom-5; }
+}
+
+@layer components {
+  .badge-emblem { @apply relative inline-grid size-12 shrink-0 place-items-center text-brand-light; }
+  .badge-emblem[data-tone="blue"] { color: #91d5ff; }
+  .badge-emblem[data-tone="violet"] { color: #d2b5ff; }
+  .badge-emblem[data-tone="gold"] { color: #ffd076; }
+  .badge-emblem[data-tone="coral"] { color: #ffab90; }
+  .badge-emblem[data-earned="false"] { color: #718391; }
+}

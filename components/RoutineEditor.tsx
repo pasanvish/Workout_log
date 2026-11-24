@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { CustomRoutine, WorkoutLog, CustomExercise } from '../types';
+import { CustomRoutine, WorkoutLog, CustomExercise, TrackingMode } from '../types';
 import ExerciseLibrary from './ExerciseLibrary';
 import ModalFrame from './ModalFrame';
 import CreateExerciseModal from './CreateExerciseModal';
@@ -141,8 +141,8 @@ const RoutineEditor: React.FC<RoutineEditorProps> = ({ isOpen, onClose, onSave, 
     onClose();
   };
 
-  const handleCreateExerciseSave = (name: string, category: string) => {
-    const newExercise = onAddCustomExercise({ name, category });
+  const handleCreateExerciseSave = (name: string, category: string, tracking: TrackingMode) => {
+    const newExercise = onAddCustomExercise({ name, category, tracking });
     handleToggleExercise(newExercise.name);
     setCreateExerciseModalOpen(false);
   };
