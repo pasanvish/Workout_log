@@ -1,81 +1,53 @@
 import React, { useState } from 'react';
+import ModalFrame from './ModalFrame';
 
 interface WorkoutFeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (effort: number) => void;
+  routineName?: string;
+  setCount: number;
 }
 
-const EFFORT_LEVELS: Record<number, { emoji: string; label: string }> = {
-  1: { emoji: '😌', label: 'Very Easy' },
-  2: { emoji: '😊', label: 'Easy' },
-  3: { emoji: '🙂', label: 'Moderate' },
-  4: { emoji: '🥵', label: 'Hard' },
-  5: { emoji: '🤮', label: 'Max Effort' },
-};
+export const EFFORT_LEVELS = [
+  { level: 1, label: 'Very easy', description: 'Plenty left in the tank' },
+  { level: 2, label: 'Easy', description: 'Comfortable pace' },
+  { level: 3, label: 'Moderate', description: 'Steady effort' },
+  { level: 4, label: 'Hard', description: 'A challenging session' },
+  { level: 5, label: 'Max effort', description: 'Near your limit' },
+] as const;
 
-const WorkoutFeedbackModal: React.FC<WorkoutFeedbackModalProps> = ({ isOpen, onClose, onConfirm }) => {
-  const [selectedEffort, setSelectedEffort] = useState<number | null>(null);
-
-  const handleConfirm = () => {
-    if (selectedEffort) {
-      onConfirm(selectedEffort);
-      setSelectedEffort(null);
-    }
-  };
-
-  const handleClose = () => {
-    setSelectedEffort(null);
-    onClose();
-  }
-
-  if (!isOpen) return null;
-
+function WorkoutFeedback({ onClose, onConfirm, routineName, setCount }: Omit<WorkoutFeedbackModalProps, 'isOpen'>) {
+  const [selected, setSelected] = useState<number>();
   return (
-    <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={handleClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="bg-background-light w-full max-w-md rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        <header className="p-5 text-center border-b border-border-color">
-          <h2 className="text-2xl font-bold text-text-primary">Workout Complete!</h2>
-          <p className="text-text-secondary mt-1">How did you feel during this session?</p>
-        </header>
-
-        <main className="p-8">
-          <div className="flex justify-around items-center">
-            {Object.entries(EFFORT_LEVELS).map(([level, { emoji, label }]) => (
-              <button
-                key={level}
-                onClick={() => setSelectedEffort(Number(level))}
-                className={`flex flex-col items-center gap-2 p-2 rounded-lg transition-all duration-200 transform hover:scale-110 w-20
-                  ${selectedEffort === Number(level) ? 'bg-brand-primary/20' : 'hover:bg-card-dark'}`}
-                title={label}
-              >
-                <span className={`text-5xl transition-transform duration-200 ${selectedEffort === Number(level) ? 'scale-110' : 'scale-100'}`}>{emoji}</span>
-                <span className={`text-xs font-semibold ${selectedEffort === Number(level) ? 'text-brand-light' : 'text-text-secondary'}`}>{label}</span>
-              </button>
-            ))}
-          </div>
-        </main>
-        
-        <footer className="p-4 bg-background-dark/50">
-          <button
-            onClick={handleConfirm}
-            className="w-full bg-gradient-to-r from-brand-primary to-cyan-500 hover:from-brand-secondary hover:to-cyan-600 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-brand-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!selectedEffort}
-          >
-            Save & Finish
+    <ModalFrame title="Finish workout" onClose={onClose}
+      description={routineName ? `${routineName} · ${setCount} ${setCount === 1 ? 'set' : 'sets'} logged` : undefined}
+      footer={
+        <>
+          <button type="button" className="panel-action" onClick={onClose}>Keep logging</button>
+          <button type="button" className="panel-action panel-action-primary disabled:opacity-40" disabled={selected === undefined}
+            onClick={() => { if (selected !== undefined) onConfirm(selected); }}>Save workout</button>
+        </>
+      }>
+      <h3 className="mb-3 text-sm font-semibold">How hard was this session?</h3>
+      <div className="grid gap-2" role="group" aria-label="Session effort">
+        {EFFORT_LEVELS.map(({ level, label, description }) => (
+          <button type="button" key={level} className="effort-card" onClick={() => setSelected(level)} aria-pressed={selected === level}>
+            <span className="session-date !size-9 text-sm font-bold">{level}</span>
+            <span>
+              <strong className="block text-sm">{label}</strong>
+              <span className="block text-xs text-text-secondary">{description}</span>
+            </span>
+            <span className="effort-card-meter" aria-hidden="true">
+              {EFFORT_LEVELS.map(segment => <span key={segment.level} data-filled={segment.level <= level} />)}
+            </span>
           </button>
-        </footer>
+        ))}
       </div>
-    </div>
+    </ModalFrame>
   );
-};
+}
 
-export default WorkoutFeedbackModal;
+export default function WorkoutFeedbackModal({ isOpen, ...props }: WorkoutFeedbackModalProps) {
+  return isOpen ? <WorkoutFeedback {...props} /> : null;
+}

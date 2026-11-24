@@ -257,6 +257,8 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         isOpen={isFeedbackModalOpen}
         onClose={() => setIsFeedbackModalOpen(false)}
         onConfirm={handleConfirmSave}
+        routineName={pendingLog?.routineName}
+        setCount={loggedSets}
       />
       <ExercisePickerModal
         isOpen={isExercisePickerOpen}

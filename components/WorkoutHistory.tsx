@@ -2,7 +2,9 @@ import React, { useState, useMemo, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { WorkoutLog, Profile, ProfilePRs } from '../types';
 import BadgesDisplay from './BadgesDisplay';
+import TrainingProgress from './TrainingProgress';
 import ExerciseArtwork from './ExerciseArtwork';
+import { EFFORT_LEVELS } from './WorkoutFeedbackModal';
 
 interface WorkoutHistoryProps {
   logs: WorkoutLog[];
@@ -14,14 +16,6 @@ interface WorkoutHistoryProps {
   activeProfile: Profile | undefined;
   personalRecords: ProfilePRs;
 }
-
-const EFFORT_LEVELS: Record<number, { emoji: string; label: string }> = {
-  1: { emoji: '😌', label: 'Very Easy' },
-  2: { emoji: '😊', label: 'Easy' },
-  3: { emoji: '🙂', label: 'Moderate' },
-  4: { emoji: '🥵', label: 'Hard' },
-  5: { emoji: '🤮', label: 'Max Effort' },
-};
 
 const DownloadIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -207,7 +201,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
             <div class="session-header">
                 <h2>${log.routineName}</h2>
                 <p>${new Date(log.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                ${log.effort ? `<p class="effort-rating">Session Effort: ${EFFORT_LEVELS[log.effort]?.label || 'N/A'}</p>` : ''}
+                ${log.effort ? `<p class="effort-rating">Session Effort: ${EFFORT_LEVELS.find(item => item.level === log.effort)?.label || 'N/A'}</p>` : ''}
             </div>
             ${log.exercises.map(ex => `
                 <div class="exercise">
@@ -283,6 +277,13 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
             </div>
             {logs.length > 0 ? (
               <>
+                <button type="button" onClick={() => setView('Progress')} className="progress-link">
+                  <span className="session-date !size-10" aria-hidden="true">
+                    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19h16M6 14l4-4 4 2 4-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </span>
+                  <span className="min-w-0 flex-1"><strong className="block text-sm">View progress</strong><span className="block text-xs text-text-secondary">Weekly activity and strength trends</span></span>
+                  <span aria-hidden="true" className="text-brand-light">→</span>
+                </button>
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-lg font-semibold">Session log</h3>
                   <select aria-label="Filter sessions by routine" className="track-input min-w-0 max-w-[56%]" value={selectedRoutineFilter === null || !uniqueRoutines.includes(selectedRoutineFilter) ? '' : 'routine:' + selectedRoutineFilter} onChange={event => setSelectedRoutineFilter(event.target.value ? event.target.value.slice(8) : null)}>
@@ -296,7 +297,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                     {sessions.map(log => {
                       const date = new Date(log.date);
                       const isExpanded = expandedLogs.has(log.id);
-                      const effort = log.effort ? EFFORT_LEVELS[log.effort] : undefined;
+                      const effort = EFFORT_LEVELS.find(item => item.level === log.effort);
                       const sets = completedSets(log);
                       const editing = draft?.id === log.id;
                       return (
@@ -371,38 +372,41 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
         )}
 
         {view === 'Progress' && (
-          <section className="tracking-panel">
-            <h3 className="text-lg font-semibold">Strength over time</h3>
-            <p className="mt-1 text-sm text-text-secondary">Heaviest set for each session.</p>
-            {uniqueExercises.length > 0 ? (
-              <>
-                <label htmlFor="exercise-select" className="mt-4 block text-xs font-medium text-text-secondary">Exercise</label>
-                <select id="exercise-select" value={exerciseFilter} onChange={event => setSelectedExercise(event.target.value)} className="track-input mt-1.5 w-full">
-                  {uniqueExercises.map(exercise => <option key={exercise} value={exercise}>{exercise}</option>)}
-                </select>
-                {latestPoint && (
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="stat-card"><span className="text-xs text-text-secondary">Latest</span><strong className="mt-1 text-xl tabular-nums">{number.format(latestPoint.maxWeight)} kg</strong></div>
-                    <div className="stat-card"><span className="text-xs text-text-secondary">Best</span><strong className="mt-1 text-xl tabular-nums text-brand-light">{number.format(strongestWeight)} kg</strong></div>
-                  </div>
-                )}
-                {chartData.length > 1 ? (
-                  <div className="mt-5 h-56 min-w-0" aria-label="Heaviest set by session">
-                    <ResponsiveContainer>
-                      <AreaChart data={chartData} margin={{ top: 8, right: 10, left: -18, bottom: 2 }}>
-                        <defs><linearGradient id="strength-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="#75ebc9" stopOpacity={0.28} /><stop offset="100%" stopColor="#75ebc9" stopOpacity={0.02} /></linearGradient></defs>
-                        <CartesianGrid vertical={false} stroke="#2c3d49" strokeDasharray="3 4" />
-                        <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
-                        <YAxis tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} />
-                        <Tooltip labelFormatter={fullDate} formatter={value => [`${value} kg`, 'Heaviest set']} contentStyle={{ background: '#121c24', borderColor: '#2c3d49', borderRadius: 12 }} />
-                        <Area dataKey="maxWeight" type="linear" stroke="#75ebc9" fill="url(#strength-fill)" strokeWidth={2.5} dot={{ r: 3, fill: '#75ebc9' }} isAnimationActive={false} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : <p className="mt-5 rounded-xl bg-background-dark p-4 text-sm text-text-secondary">Log a weight for this exercise in two sessions to see a trend.</p>}
-              </>
-            ) : <p className="mt-5 text-sm text-text-secondary">Log your first workout to start tracking strength.</p>}
-          </section>
+          <div className="space-y-4">
+            <TrainingProgress logs={logs} />
+            <section className="tracking-panel">
+              <h3 className="text-lg font-semibold">Strength over time</h3>
+              <p className="mt-1 text-sm text-text-secondary">Heaviest set for each session.</p>
+              {uniqueExercises.length > 0 ? (
+                <>
+                  <label htmlFor="exercise-select" className="mt-4 block text-xs font-medium text-text-secondary">Exercise</label>
+                  <select id="exercise-select" value={exerciseFilter} onChange={event => setSelectedExercise(event.target.value)} className="track-input mt-1.5 w-full">
+                    {uniqueExercises.map(exercise => <option key={exercise} value={exercise}>{exercise}</option>)}
+                  </select>
+                  {latestPoint && (
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="stat-card"><span className="text-xs text-text-secondary">Latest</span><strong className="mt-1 text-xl tabular-nums">{number.format(latestPoint.maxWeight)} kg</strong></div>
+                      <div className="stat-card"><span className="text-xs text-text-secondary">Best</span><strong className="mt-1 text-xl tabular-nums text-brand-light">{number.format(strongestWeight)} kg</strong></div>
+                    </div>
+                  )}
+                  {chartData.length > 1 ? (
+                    <div className="mt-5 h-56 min-w-0" aria-label="Heaviest set by session">
+                      <ResponsiveContainer>
+                        <AreaChart data={chartData} margin={{ top: 8, right: 10, left: -18, bottom: 2 }}>
+                          <defs><linearGradient id="strength-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="#75ebc9" stopOpacity={0.28} /><stop offset="100%" stopColor="#75ebc9" stopOpacity={0.02} /></linearGradient></defs>
+                          <CartesianGrid vertical={false} stroke="#2c3d49" strokeDasharray="3 4" />
+                          <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
+                          <YAxis tick={{ fill: '#9cafbc', fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <Tooltip labelFormatter={fullDate} formatter={value => [`${value} kg`, 'Heaviest set']} contentStyle={{ background: '#121c24', borderColor: '#2c3d49', borderRadius: 12 }} />
+                          <Area dataKey="maxWeight" type="linear" stroke="#75ebc9" fill="url(#strength-fill)" strokeWidth={2.5} dot={{ r: 3, fill: '#75ebc9' }} isAnimationActive={false} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : <p className="mt-5 rounded-xl bg-background-dark p-4 text-sm text-text-secondary">Log a weight for this exercise in two sessions to see a trend.</p>}
+                </>
+              ) : <p className="mt-5 text-sm text-text-secondary">Log your first workout to start tracking strength.</p>}
+            </section>
+          </div>
         )}
 
         {view === 'Records' && (
