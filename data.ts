@@ -1,4 +1,4 @@
-import { isTrackingMode, recordCandidate, trackingOf } from './setTracking.ts';
+import { isRpe, isSetType, isTrackingMode, MAX_EXERCISE_NOTES, recordCandidate, trackingOf } from './setTracking.ts';
 import { cleanAppearance } from './profile.ts';
 import type { WorkoutLog, ProfilePRs, CustomRoutine, CustomExercise, BodyMeasurementLog, ProfileAppearance } from './types';
 
@@ -56,9 +56,21 @@ function parseLogs(value: unknown): WorkoutLog[] {
         const weight = numericText(set.weight);
         const reps = numericText(set.reps);
         const seconds = numericText(set.seconds);
-        return weight || reps || seconds ? [{ id: text(set.id) ? set.id : `set-${index}`, weight, reps, ...(seconds ? { seconds } : {}) }] : [];
+        return weight || reps || seconds ? [{
+          id: text(set.id) ? set.id : `set-${index}`,
+          weight,
+          reps,
+          ...(seconds ? { seconds } : {}),
+          ...(isSetType(set.setType) ? { setType: set.setType } : {}),
+          ...(isRpe(set.rpe) ? { rpe: set.rpe } : {}),
+        }] : [];
       });
-      return sets.length ? [{ name: exercise.name, sets, ...(isTrackingMode(exercise.tracking) ? { tracking: exercise.tracking } : {}) }] : [];
+      return sets.length ? [{
+        name: exercise.name,
+        sets,
+        ...(isTrackingMode(exercise.tracking) ? { tracking: exercise.tracking } : {}),
+        ...(text(exercise.notes) ? { notes: exercise.notes.slice(0, MAX_EXERCISE_NOTES) } : {}),
+      }] : [];
     });
     if (!exercises.length) return [];
     const effort = typeof log.effort === 'number' && Number.isInteger(log.effort) && log.effort >= 1 && log.effort <= 5

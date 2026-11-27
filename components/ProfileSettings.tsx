@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ACCENTS, cleanAppearance, DEFAULT_WEEKLY_GOAL, resizeAvatar } from '../profile';
+import { ACCENTS, cleanAppearance, DEFAULT_REST_SECONDS, DEFAULT_WEEKLY_GOAL, resizeAvatar, REST_DURATIONS } from '../profile';
 import type { Accent, Profile } from '../types';
 import ModalFrame from './ModalFrame';
 import ProfileAvatar from './ProfileAvatar';
@@ -84,6 +84,13 @@ export default function ProfileSettings({ profile, onSave, onClose, onSwitch }: 
           <select className="track-input mt-1.5 w-full" value={draft.weeklyGoal ?? DEFAULT_WEEKLY_GOAL}
             onChange={event => setDraft(previous => ({ ...previous, weeklyGoal: Number(event.target.value) }))}>
             {Array.from({ length: 7 }, (_, index) => index + 1).map(n => <option key={n} value={n}>{n} {n === 1 ? 'workout' : 'workouts'} per week</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-text-secondary">
+          Default rest timer
+          <select className="track-input mt-1.5 w-full" value={draft.restSeconds ?? DEFAULT_REST_SECONDS}
+            onChange={event => setDraft(previous => ({ ...previous, restSeconds: Number(event.target.value) }))}>
+            {REST_DURATIONS.map(seconds => <option key={seconds} value={seconds}>{seconds}s</option>)}
           </select>
         </label>
         {error && <p role="alert" className="text-sm text-red-300">{error}</p>}

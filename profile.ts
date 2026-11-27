@@ -8,6 +8,8 @@ export const ACCENTS: Record<Accent, { label: string; color: string }> = {
 };
 
 export const DEFAULT_WEEKLY_GOAL = 3;
+export const DEFAULT_REST_SECONDS = 90;
+export const REST_DURATIONS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300];
 
 export function cleanAppearance(value: unknown): ProfileAppearance {
   if (!value || typeof value !== 'object') return {};
@@ -16,6 +18,9 @@ export function cleanAppearance(value: unknown): ProfileAppearance {
   if (typeof data.accent === 'string' && Object.hasOwn(ACCENTS, data.accent)) result.accent = data.accent as Accent;
   if (typeof data.weeklyGoal === 'number' && Number.isInteger(data.weeklyGoal) && data.weeklyGoal >= 1 && data.weeklyGoal <= 7) {
     result.weeklyGoal = data.weeklyGoal;
+  }
+  if (typeof data.restSeconds === 'number' && REST_DURATIONS.includes(data.restSeconds)) {
+    result.restSeconds = data.restSeconds;
   }
   if (typeof data.avatar === 'string' && data.avatar.length <= 100_000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(data.avatar)) {
     result.avatar = data.avatar;

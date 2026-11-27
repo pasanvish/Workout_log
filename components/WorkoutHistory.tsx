@@ -1,13 +1,17 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { WorkoutLog, Profile, ProfilePRs } from '../types';
+import { Exercise, Set as LoggedSet, WorkoutLog, Profile, ProfilePRs } from '../types';
 import BadgesDisplay from './BadgesDisplay';
 import TrainingProgress from './TrainingProgress';
 import ExerciseArtwork from './ExerciseArtwork';
 import SetInputs from './SetInputs';
+import SetDetails from './SetDetails';
+import ExerciseNotes from './ExerciseNotes';
+import LogAssistant from './LogAssistant';
+import { DEFAULT_WEEKLY_GOAL } from '../profile';
 import {
-  formatRecord, formatSet, isCompleteSet, PROGRESS_METRICS, progressMetric, recordCandidate, trackingOf,
-  type ProgressMetric, type SetField,
+  formatRecord, formatSet, formatSetDetails, isCompleteSet, PROGRESS_METRICS, progressMetric, recordCandidate, trackingOf,
+  type ProgressMetric,
 } from '../setTracking';
 import { EFFORT_LEVELS } from './WorkoutFeedbackModal';
 import { exportName, saveExport, workoutReport } from '../exports';
@@ -71,14 +75,18 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
   const [fileBusy, setFileBusy] = useState(false);
   const [draft, setDraft] = useState<WorkoutLog | null>(null);
 
-  const editSet = (exIndex: number, setIndex: number, field: SetField, value: string) => {
-    setDraft(d => d && {
-      ...d,
-      exercises: d.exercises.map((ex, i) => i !== exIndex ? ex : {
-        ...ex,
-        sets: ex.sets.map((set, j) => j !== setIndex ? set : { ...set, [field]: value }),
-      }),
+  const editExercise = (index: number, update: (exercise: Exercise) => Exercise) => {
+    setDraft(current => current && {
+      ...current,
+      exercises: current.exercises.map((exercise, i) => i === index ? update(exercise) : exercise),
     });
+  };
+
+  const editSet = (exIndex: number, setIndex: number, changes: Partial<LoggedSet>) => {
+    editExercise(exIndex, exercise => ({
+      ...exercise,
+      sets: exercise.sets.map((set, i) => i === setIndex ? { ...set, ...changes } : set),
+    }));
   };
 
   const handleDelete = (log: WorkoutLog) => {
@@ -88,7 +96,10 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
   };
 
   const saveDraft = () => {
-    if (draft) onUpdateLog(draft);
+    if (draft) onUpdateLog({
+      ...draft,
+      exercises: draft.exercises.map(exercise => ({ ...exercise, notes: exercise.notes?.trim() || undefined })),
+    });
     setDraft(null);
   };
 
@@ -290,17 +301,27 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                                     <ExerciseArtwork name={exercise.name} className="!w-9 shrink-0 !rounded-lg" />
                                     <h5 className="min-w-0 break-words text-sm font-semibold">{exercise.name}</h5>
                                   </div>
+                                  {editing ? (
+                                    <div className="mb-2"><ExerciseNotes name={exercise.name} notes={exercise.notes}
+                                      onChange={notes => editExercise(exIndex, current => ({ ...current, notes }))} /></div>
+                                  ) : exercise.notes?.trim() && (
+                                    <p className="mb-2 whitespace-pre-wrap break-words text-xs text-text-secondary">{exercise.notes}</p>
+                                  )}
                                   <ul className={editing ? 'grid gap-2' : 'grid grid-cols-2 gap-2 sm:grid-cols-3'}>
                                     {exercise.sets.map((set, setIndex) => (
                                       <li key={set.id} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-background-light px-2.5 py-2 text-xs">
                                         <span className="text-text-secondary">Set {setIndex + 1}</span>
                                         {editing ? (
-                                          <div className="ml-auto w-full max-w-[200px]">
+                                          <div className="ml-auto w-full max-w-[250px] space-y-2">
                                             <SetInputs exerciseName={exercise.name} set={set} index={setIndex} mode={trackingOf(exercise)} showLabels
-                                              onChange={(field, value) => editSet(exIndex, setIndex, field, value)} />
+                                              onChange={(field, value) => editSet(exIndex, setIndex, { [field]: value })} />
+                                            <SetDetails set={set} label={`${exercise.name} set ${setIndex + 1}`} onChange={changes => editSet(exIndex, setIndex, changes)} />
                                           </div>
                                         ) : (
-                                          <span className="font-medium tabular-nums">{formatSet(set, trackingOf(exercise))} {set.isPR && <span className="ml-1 text-yellow-300">PR</span>}</span>
+                                          <div>
+                                            <span className="font-medium tabular-nums">{formatSet(set, trackingOf(exercise))} {set.isPR && <span className="ml-1 text-yellow-300">PR</span>}</span>
+                                            {formatSetDetails(set) && <p className="mt-1 text-text-secondary">{formatSetDetails(set)}</p>}
+                                          </div>
                                         )}
                                       </li>
                                     ))}
@@ -338,6 +359,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
         {view === 'Progress' && (
           <div className="space-y-4">
             <TrainingProgress logs={logs} />
+            <LogAssistant logs={logs} records={personalRecords} goal={activeProfile?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL} />
             <section className="tracking-panel">
               <h3 className="text-lg font-semibold">Exercise progress</h3>
               <p className="mt-1 text-sm text-text-secondary">{metricInfo?.description ?? 'Track weight, bodyweight reps, or hold duration.'}</p>

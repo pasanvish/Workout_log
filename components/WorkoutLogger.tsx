@@ -7,6 +7,7 @@ import { getExerciseDetails } from '../exerciseDetails';
 import ExerciseLogger from './ExerciseLogger';
 import RestTimer from './RestTimer';
 import { defaultTracking, emptySet, formatSet, isCompleteSet, trackingOf } from '../setTracking';
+import { DEFAULT_REST_SECONDS } from '../profile';
 import { completedSetCount } from '../training';
 import RoutineEditor from './RoutineEditor';
 import WorkoutFeedbackModal from './WorkoutFeedbackModal';
@@ -73,7 +74,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
 
   const handleRoutineSelect = (routine: CustomRoutine) => {
     if (selectedRoutine?.id === routine.id) return;
-    if (selectedRoutine && exercises.some(exercise => exercise.sets.some(set => set.weight || set.reps || set.seconds))
+    if (selectedRoutine && exercises.some(exercise => exercise.notes?.trim() || exercise.sets.some(set => set.weight || set.reps || set.seconds))
       && !confirm('Start a different routine? The sets in this workout will be cleared.')) return;
     setSelectedRoutine(routine);
     setExercises(routine.exercises.map(newExercise));
@@ -94,7 +95,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
       return {
         name,
         tracking: previous.tracking ?? defaultTracking(name, customExercises),
-        sets: Array.from({ length: Math.max(1, previous.sets.length) }, emptySet),
+        sets: previous.sets.length ? previous.sets.map(set => ({ ...emptySet(), setType: set.setType })) : [emptySet()],
       };
     }));
     setRestEndsAt(null);
@@ -108,6 +109,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
       routineName: selectedRoutine.name,
       exercises: exercises.map(exercise => ({
         ...exercise,
+        notes: exercise.notes?.trim() || undefined,
         sets: exercise.sets.filter(set => isCompleteSet(set, trackingOf(exercise))),
       })).filter(exercise => exercise.sets.length > 0),
     };
@@ -211,8 +213,8 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
               <progress className="session-progress mt-3" aria-label="Sets logged" value={progress} max={1} />
             </div>
             <div className="space-y-4">
-              {exercises.map(exercise => (
-                 <div key={exercise.name} className="exercise-card">
+              {exercises.map((exercise, exIndex) => (
+                 <div key={`${exercise.name}-${exIndex}`} className="exercise-card">
                     <div className="exercise-card-heading">
                         <div className="exercise-thumbnail"><ExerciseArtwork name={exercise.name} /></div>
                         <div className="min-w-0 flex-1">
@@ -237,8 +239,8 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
                         </button>
                     </div>
                     <div className="p-4 sm:p-5"><ExerciseLogger exercise={exercise} previous={lastTime[exercise.name]?.exercise}
-                      onChange={updated => setExercises(current => current.map(item => item.name === updated.name ? updated : item))}
-                      onRest={() => setRestEndsAt(Date.now() + 90_000)} /></div>
+                      onChange={updated => setExercises(current => current.map((item, index) => index === exIndex ? updated : item))}
+                      onRest={() => setRestEndsAt(Date.now() + (profile.restSeconds ?? DEFAULT_REST_SECONDS) * 1000)} /></div>
                 </div>
               ))}
                <button
