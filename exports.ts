@@ -1,5 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import { formatSet, isCompleteSet, trackingOf } from './setTracking.ts';
+import { formatSet, formatSetDetails, isCompleteSet, trackingOf } from './setTracking.ts';
 import type { WorkoutLog } from './types';
 
 interface ExportFile {
@@ -42,10 +42,12 @@ export function workoutReport(profileName: string, logs: WorkoutLog[]) {
     const effort = Number.isInteger(log.effort) && log.effort >= 1 && log.effort <= 5 ? ` · Effort ${log.effort}/5` : '';
     const exercises = log.exercises.map(exercise => {
       const mode = trackingOf(exercise);
-      const sets = exercise.sets.filter(set => isCompleteSet(set, mode)).map(set =>
-        `<li>${escape(formatSet(set, mode))} ${set.isPR ? '<strong>PR</strong>' : ''}</li>`,
-      ).join('');
-      return `<h3>${escape(exercise.name)}</h3><ul>${sets}</ul>`;
+      const sets = exercise.sets.filter(set => isCompleteSet(set, mode)).map(set => {
+        const details = formatSetDetails(set);
+        return `<li>${escape(formatSet(set, mode))}${details ? ` · ${escape(details)}` : ''} ${set.isPR ? '<strong>PR</strong>' : ''}</li>`;
+      }).join('');
+      const notes = exercise.notes?.trim() ? `<p class="notes">${escape(exercise.notes)}</p>` : '';
+      return `<h3>${escape(exercise.name)}</h3>${notes}<ul>${sets}</ul>`;
     }).join('');
     return `<article><h2>${escape(log.routineName)}</h2><p>${escape(date)}${effort}</p>${exercises}</article>`;
   }).join('');
@@ -58,6 +60,7 @@ export function workoutReport(profileName: string, logs: WorkoutLog[]) {
 body{margin:2rem auto;padding:0 1rem;max-width:44rem;font:1rem/1.5 system-ui,sans-serif;color:#15262b}
 h1,h2,h3{line-height:1.2;color:#075e51}h2,h3,p{margin:0 0 .5rem}
 article{border:1px solid #ccd7d7;border-radius:12px;padding:1rem 1.25rem;margin:1rem 0;break-inside:avoid}
+.notes{white-space:pre-wrap;overflow-wrap:anywhere}
 ul{padding-left:1.3rem}li{margin:.25rem 0}
 </style></head>
 <body><h1>${title}</h1><p>${logs.length} ${logs.length === 1 ? 'session' : 'sessions'}</p>${sessions}</body>

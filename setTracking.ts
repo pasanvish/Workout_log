@@ -1,10 +1,34 @@
-import type { CustomExercise, Exercise, Set, TrackingMode } from './types';
+import type { CustomExercise, Exercise, Set, SetType, TrackingMode } from './types';
 
 export const TRACKING_LABELS: Record<TrackingMode, string> = {
   weight: 'Weight & reps',
   bodyweight: 'Bodyweight & reps',
   duration: 'Duration',
 };
+
+export const SET_TYPES: Record<SetType, string> = {
+  working: 'Working',
+  warmup: 'Warm-up',
+  drop: 'Drop',
+  failure: 'Failure',
+};
+
+export const RPE_VALUES = [1, 2, 3, 4, 5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+export const MAX_EXERCISE_NOTES = 1500;
+
+export function isSetType(value: unknown): value is SetType {
+  return typeof value === 'string' && Object.hasOwn(SET_TYPES, value);
+}
+
+export function isRpe(value: unknown): value is number {
+  return typeof value === 'number' && RPE_VALUES.includes(value);
+}
+
+export function formatSetDetails(set: Set) {
+  const type = isSetType(set.setType) && set.setType !== 'working' ? SET_TYPES[set.setType] : '';
+  const rpe = isRpe(set.rpe) ? `RPE ${set.rpe}` : '';
+  return [type, rpe].filter(Boolean).join(' · ');
+}
 
 const bodyweightExercises = new Set([
   'Push-ups', 'Pull-ups', 'Chin-ups', 'Triceps Dips', 'Crunches', 'Leg Raises',
@@ -67,7 +91,7 @@ export function formatSet(set: Set, mode: TrackingMode) {
 }
 
 export function recordCandidate(set: Set, mode: TrackingMode): { key: string; value: number } | undefined {
-  if (!isCompleteSet(set, mode)) return undefined;
+  if (set.setType === 'warmup' || !isCompleteSet(set, mode)) return undefined;
   if (mode === 'duration') return { key: 'duration', value: Number(set.seconds) };
   const weight = Number(set.weight);
   const reps = Number(set.reps);

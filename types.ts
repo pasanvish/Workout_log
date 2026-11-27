@@ -6,6 +6,7 @@ export interface ProfileAppearance {
   avatar?: string;
   accent?: Accent;
   weeklyGoal?: number;
+  restSeconds?: number;
 }
 
 export interface Profile extends ProfileAppearance {
@@ -28,18 +29,23 @@ export interface CustomExercise {
   tracking?: TrackingMode;
 }
 
+export type SetType = 'working' | 'warmup' | 'drop' | 'failure';
+
 export interface Set {
     id: string;
     weight: string;
     reps: string;
     seconds?: string;
     isPR?: boolean;
+    setType?: SetType;
+    rpe?: number;
 }
 
 export interface Exercise {
     name: string;
     tracking?: TrackingMode;
     sets: Set[];
+    notes?: string;
 }
 
 export interface WorkoutLog {
