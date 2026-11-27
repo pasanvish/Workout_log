@@ -5,6 +5,12 @@ export function localLogDate(value: string) {
   return new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value);
 }
 
+export function localDayKey(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 export function weekStart(value: Date) {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);

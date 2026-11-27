@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Exercise, Set as LoggedSet, WorkoutLog, Profile, ProfilePRs } from '../types';
+import { CustomExercise, Exercise, Set as LoggedSet, WorkoutLog, Profile, ProfilePRs } from '../types';
 import BadgesDisplay from './BadgesDisplay';
 import TrainingProgress from './TrainingProgress';
 import ExerciseArtwork from './ExerciseArtwork';
@@ -8,6 +8,12 @@ import SetInputs from './SetInputs';
 import SetDetails from './SetDetails';
 import ExerciseNotes from './ExerciseNotes';
 import LogAssistant from './LogAssistant';
+import OfflineAi from './OfflineAi';
+import WorkoutCalendar from './WorkoutCalendar';
+import MuscleVolume from './MuscleVolume';
+import { hasNativeAi } from '../localAi';
+import { localDayKey, localLogDate } from '../training';
+import { supersetLabels } from '../workoutFlow';
 import { DEFAULT_WEEKLY_GOAL } from '../profile';
 import {
   formatRecord, formatSet, formatSetDetails, isCompleteSet, PROGRESS_METRICS, progressMetric, recordCandidate, trackingOf,
@@ -18,6 +24,8 @@ import { exportName, saveExport, workoutReport } from '../exports';
 
 interface WorkoutHistoryProps {
   logs: WorkoutLog[];
+  customExercises: CustomExercise[];
+  isOpen: boolean;
   onImportLogs: (data: unknown) => string;
   onDeleteLog: (logId: string) => void;
   onUpdateLog: (log: WorkoutLog) => void;
@@ -57,8 +65,8 @@ const MedalIcon = () => (
 const historyViews = ['Sessions', 'Progress', 'Records', 'Badges'] as const;
 export type HistoryView = typeof historyViews[number];
 
-const shortDate = (date: string) => new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-const fullDate = (date: string) => new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+const shortDate = (date: string) => localLogDate(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const fullDate = (date: string) => localLogDate(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
 const completedSets = (log: WorkoutLog) => log.exercises.flatMap(exercise =>
   exercise.sets.filter(set => isCompleteSet(set, trackingOf(exercise))),
@@ -70,7 +78,7 @@ const Chevron = ({ open }: { open: boolean }) => (
   </svg>
 );
 
-const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords, onDeleteLog, onUpdateLog, view, onViewChange }) => {
+const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, customExercises, isOpen, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords, onDeleteLog, onUpdateLog, view, onViewChange }) => {
   const [fileStatus, setFileStatus] = useState('');
   const [fileBusy, setFileBusy] = useState(false);
   const [draft, setDraft] = useState<WorkoutLog | null>(null);
@@ -105,6 +113,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
 
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<ProgressMetric>();
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedRoutineFilter, setSelectedRoutineFilter] = useState<string | null>(null);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -177,13 +186,15 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
   const monthGroups = useMemo(() => {
     const groups = new Map<string, WorkoutLog[]>();
     for (const log of filteredLogs) {
-      const month = new Date(log.date).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      const date = localLogDate(log.date);
+      if (selectedDay && localDayKey(date) !== selectedDay) continue;
+      const month = date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
       const group = groups.get(month);
       if (group) group.push(log);
       else groups.set(month, [log]);
     }
     return [...groups];
-  }, [filteredLogs]);
+  }, [filteredLogs, selectedDay]);
 
   const handleImportClick = () => {
       fileInputRef.current?.click();
@@ -260,22 +271,28 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                   <span className="min-w-0 flex-1"><strong className="block text-sm">View progress</strong><span className="block text-xs text-text-secondary">Weekly activity and strength trends</span></span>
                   <span aria-hidden="true" className="text-brand-light">→</span>
                 </button>
+                <WorkoutCalendar logs={filteredLogs} day={selectedDay} onSelect={setSelectedDay} />
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-lg font-semibold">Session log</h3>
-                  <select aria-label="Filter sessions by routine" className="track-input min-w-0 max-w-[56%]" value={selectedRoutineFilter === null || !uniqueRoutines.includes(selectedRoutineFilter) ? '' : 'routine:' + selectedRoutineFilter} onChange={event => setSelectedRoutineFilter(event.target.value ? event.target.value.slice(8) : null)}>
+                  <select aria-label="Filter sessions by routine" className="track-input min-w-0 max-w-[56%]" value={selectedRoutineFilter === null || !uniqueRoutines.includes(selectedRoutineFilter) ? '' : 'routine:' + selectedRoutineFilter} onChange={event => {
+                    setSelectedRoutineFilter(event.target.value ? event.target.value.slice(8) : null);
+                    setSelectedDay(null);
+                  }}>
                     <option value="">All routines</option>
                     {uniqueRoutines.map(name => <option key={name} value={'routine:' + name}>{name}</option>)}
                   </select>
                 </div>
+                {monthGroups.length === 0 && <p className="text-sm text-text-secondary">No sessions match this date and routine.</p>}
                 {monthGroups.map(([month, sessions]) => (
                   <section key={month} className="space-y-3">
                     <h4 className="text-xs font-semibold text-text-secondary">{month}</h4>
                     {sessions.map(log => {
-                      const date = new Date(log.date);
+                      const date = localLogDate(log.date);
                       const isExpanded = expandedLogs.has(log.id);
                       const effort = EFFORT_LEVELS.find(item => item.level === log.effort);
                       const sets = completedSets(log);
                       const editing = draft?.id === log.id;
+                      const groups = isExpanded ? supersetLabels(log.exercises) : undefined;
                       return (
                         <article key={log.id} className="session-history-card">
                           <button className="flex w-full items-center gap-3 px-3 py-4 text-left hover:bg-card-dark/50 sm:px-4" onClick={() => toggleLogExpansion(log.id)} aria-expanded={isExpanded} aria-controls={isExpanded ? `log-${log.id}` : undefined}>
@@ -299,7 +316,11 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
                                 <section key={exIndex} className="rounded-xl border border-border-color/60 bg-background-dark p-3">
                                   <div className="mb-2 flex items-center gap-2.5">
                                     <ExerciseArtwork name={exercise.name} className="!w-9 shrink-0 !rounded-lg" />
-                                    <h5 className="min-w-0 break-words text-sm font-semibold">{exercise.name}</h5>
+                                    <div className="min-w-0">
+                                      <h5 className="break-words text-sm font-semibold">{exercise.name}</h5>
+                                      {exercise.superset && groups?.has(exercise.superset) &&
+                                        <span className="text-xs font-semibold text-brand-light">{groups.get(exercise.superset)}</span>}
+                                    </div>
                                   </div>
                                   {editing ? (
                                     <div className="mb-2"><ExerciseNotes name={exercise.name} notes={exercise.notes}
@@ -359,7 +380,9 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, onImportLogs, onE
         {view === 'Progress' && (
           <div className="space-y-4">
             <TrainingProgress logs={logs} />
+            <MuscleVolume logs={logs} customExercises={customExercises} />
             <LogAssistant logs={logs} records={personalRecords} goal={activeProfile?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL} />
+            {hasNativeAi && <OfflineAi key={activeProfile?.id} active={isOpen} logs={logs} goal={activeProfile?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL} />}
             <section className="tracking-panel">
               <h3 className="text-lg font-semibold">Exercise progress</h3>
               <p className="mt-1 text-sm text-text-secondary">{metricInfo?.description ?? 'Track weight, bodyweight reps, or hold duration.'}</p>

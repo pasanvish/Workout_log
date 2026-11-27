@@ -39,6 +39,7 @@ export interface Set {
     isPR?: boolean;
     setType?: SetType;
     rpe?: number;
+    checked?: boolean; // In-progress workout only
 }
 
 export interface Exercise {
@@ -46,6 +47,8 @@ export interface Exercise {
     tracking?: TrackingMode;
     sets: Set[];
     notes?: string;
+    superset?: string;
+    restSeconds?: number;
 }
 
 export interface WorkoutLog {

@@ -326,6 +326,7 @@ const App: React.FC = () => {
         isOpen={isHistoryDrawerOpen}
         onClose={() => setIsHistoryDrawerOpen(false)}
         logs={activeLogs}
+        customExercises={activeCustomExercises}
         onImportLogs={handleImportLogs}
         onExportLogs={handleExportLogs}
         onDeleteLog={deleteWorkoutLog}

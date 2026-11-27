@@ -6,8 +6,9 @@ import ExerciseMuscles from './ExerciseMuscles';
 import { getExerciseDetails } from '../exerciseDetails';
 import ExerciseLogger from './ExerciseLogger';
 import RestTimer from './RestTimer';
-import { defaultTracking, emptySet, formatSet, isCompleteSet, trackingOf } from '../setTracking';
+import { defaultTracking, emptySet, formatSet, isCompleteSet, newSetId, trackingOf } from '../setTracking';
 import { DEFAULT_REST_SECONDS } from '../profile';
+import { clearUnpairedSupersets, setCompletionAction, supersetLabels } from '../workoutFlow';
 import { completedSetCount } from '../training';
 import RoutineEditor from './RoutineEditor';
 import WorkoutFeedbackModal from './WorkoutFeedbackModal';
@@ -70,7 +71,31 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
   const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false);
   const [instructionModalState, setInstructionModalState] = useState<{isOpen: boolean, exerciseName: string | null}>({isOpen: false, exerciseName: null});
 
-  const newExercise = (name: string): Exercise => ({ name, tracking: defaultTracking(name, customExercises), sets: [emptySet()] });
+  const newExercise = (name: string): Exercise => ({
+    name, tracking: defaultTracking(name, customExercises), sets: [emptySet()],
+    restSeconds: lastTime[name]?.exercise.restSeconds,
+  });
+
+  function editSuperset(from: number, to?: number) {
+    setExercises(current => {
+      if (to === undefined) {
+        return clearUnpairedSupersets(current.map((exercise, index) => index === from ? { ...exercise, superset: undefined } : exercise));
+      }
+      const group = current[to].superset ?? newSetId();
+      return current.map((exercise, index) => index === from || index === to ? { ...exercise, superset: group } : exercise);
+    });
+  }
+
+  function completeSet(exerciseIndex: number, setIndex: number) {
+    const action = setCompletionAction(exercises, exerciseIndex, setIndex);
+    if (action.next !== undefined) {
+      const card = document.getElementById(`session-exercise-${action.next}`);
+      card?.focus({ preventScroll: true });
+      card?.scrollIntoView({ block: 'start' });
+    } else if (action.restSeconds) {
+      setRestEndsAt(Date.now() + action.restSeconds * 1000);
+    }
+  }
 
   const handleRoutineSelect = (routine: CustomRoutine) => {
     if (selectedRoutine?.id === routine.id) return;
@@ -90,14 +115,16 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
   const repeatWorkout = (log: WorkoutLog) => {
     const names = [...new Set(log.exercises.map(exercise => exercise.name))];
     setSelectedRoutine({ id: `repeat-${log.id}`, name: log.routineName, exercises: names });
-    setExercises(names.map(name => {
+    setExercises(clearUnpairedSupersets(names.map(name => {
       const previous = log.exercises.find(exercise => exercise.name === name)!;
       return {
         name,
+        restSeconds: previous.restSeconds,
+        superset: previous.superset,
         tracking: previous.tracking ?? defaultTracking(name, customExercises),
         sets: previous.sets.length ? previous.sets.map(set => ({ ...emptySet(), setType: set.setType })) : [emptySet()],
       };
-    }));
+    })));
     setRestEndsAt(null);
   };
 
@@ -107,11 +134,12 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
       id: new Date().toISOString(),
       date: new Date().toISOString(),
       routineName: selectedRoutine.name,
-      exercises: exercises.map(exercise => ({
+      exercises: clearUnpairedSupersets(exercises.map(exercise => ({
         ...exercise,
         notes: exercise.notes?.trim() || undefined,
-        sets: exercise.sets.filter(set => isCompleteSet(set, trackingOf(exercise))),
-      })).filter(exercise => exercise.sets.length > 0),
+        sets: exercise.sets.filter(set => isCompleteSet(set, trackingOf(exercise)))
+          .map(({ checked, ...set }) => set),
+      })).filter(exercise => exercise.sets.length > 0)),
     };
     if (newLog.exercises.length > 0) {
       setPendingLog(newLog);
@@ -152,6 +180,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
     setInstructionModalState({isOpen: true, exerciseName});
   };
 
+  const groupLabels = supersetLabels(exercises);
   const sessionSets = exercises.flatMap(exercise => exercise.sets);
   const loggedSets = exercises.reduce((count, exercise) => count + exercise.sets.filter(set => isCompleteSet(set, trackingOf(exercise))).length, 0);
   const progress = sessionSets.length ? loggedSets / sessionSets.length : 0;
@@ -213,13 +242,18 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
               <progress className="session-progress mt-3" aria-label="Sets logged" value={progress} max={1} />
             </div>
             <div className="space-y-4">
-              {exercises.map((exercise, exIndex) => (
-                 <div key={`${exercise.name}-${exIndex}`} className="exercise-card">
+              <p className="text-xs text-text-secondary">Tap a set number to check off that set.</p>
+              {exercises.map((exercise, exIndex) => {
+                const group = exercise.superset ? groupLabels.get(exercise.superset) : undefined;
+                return (
+                 <div key={`${exercise.name}-${exIndex}`} id={`session-exercise-${exIndex}`} tabIndex={-1}
+                   aria-label={exercise.name} className="exercise-card scroll-mt-24">
                     <div className="exercise-card-heading">
                         <div className="exercise-thumbnail"><ExerciseArtwork name={exercise.name} /></div>
                         <div className="min-w-0 flex-1">
                           <p className="eyebrow mb-1">{getExerciseDetails(exercise.name).category}</p>
                           <h4 className="text-base font-semibold text-brand-light">{exercise.name}</h4>
+                          {group && <span className="history-chip mt-1 inline-flex text-brand-light">{group}</span>}
                           <p className="text-sm text-text-secondary mt-1 leading-relaxed">{getExerciseDetails(exercise.name).description}</p>
                           <div className="mt-2"><ExerciseMuscles name={exercise.name} /></div>
                           {lastTime[exercise.name] && (
@@ -240,9 +274,27 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
                     </div>
                     <div className="p-4 sm:p-5"><ExerciseLogger exercise={exercise} previous={lastTime[exercise.name]?.exercise}
                       onChange={updated => setExercises(current => current.map((item, index) => index === exIndex ? updated : item))}
-                      onRest={() => setRestEndsAt(Date.now() + (profile.restSeconds ?? DEFAULT_REST_SECONDS) * 1000)} /></div>
+                      onSetChecked={setIndex => completeSet(exIndex, setIndex)}
+                      onRest={() => setRestEndsAt(Date.now() + (exercise.restSeconds ?? profile.restSeconds ?? DEFAULT_REST_SECONDS) * 1000)}
+                      supersetControls={group ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-text-secondary">Check off each exercise in the round. Auto-rest uses the last exercise’s timer.</p>
+                          <button type="button" className="category-chip" onClick={() => editSuperset(exIndex)}>Leave {group.toLowerCase()}</button>
+                        </div>
+                      ) : exercises.length > 1 && (
+                        <label className="block text-xs text-text-secondary">
+                          Superset partner
+                          <select className="track-input mt-1 w-full" value="" aria-label={`Superset partner for ${exercise.name}`}
+                            onChange={event => { if (event.target.value) editSuperset(exIndex, Number(event.target.value)); }}>
+                            <option value="">Choose an exercise</option>
+                            {exercises.map((candidate, index) => index !== exIndex &&
+                              <option key={index} value={index}>{candidate.name}</option>)}
+                          </select>
+                        </label>
+                      )} /></div>
                 </div>
-              ))}
+                );
+              })}
                <button
                   onClick={() => setIsExercisePickerOpen(true)}
                   className="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-lg border-2 border-dashed border-border-color text-text-secondary hover:border-brand-primary hover:text-brand-primary transition-all duration-200"
