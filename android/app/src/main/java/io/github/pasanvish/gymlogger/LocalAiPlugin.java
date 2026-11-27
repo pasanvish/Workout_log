@@ -4,6 +4,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Process;
 import android.util.Log;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -15,33 +16,33 @@ import com.google.ai.edge.litertlm.Contents;
 import com.google.ai.edge.litertlm.ConversationConfig;
 import com.google.ai.edge.litertlm.Engine;
 import com.google.ai.edge.litertlm.EngineConfig;
+import com.google.ai.edge.litertlm.SamplerConfig;
 import com.google.ai.edge.litertlm.ThinkingConfig;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @CapacitorPlugin(name = "LocalAi")
 public class LocalAiPlugin extends Plugin {
-    private static final long MINIMUM_TOTAL_MEMORY = 5_000_000_000L;
-    private static final long MINIMUM_AVAILABLE_MEMORY = 1_700_000_000L;
     private static final long STORAGE_RESERVE = 64 * 1024 * 1024L;
-    private static final String MODEL_FILENAME = "qwen3-0.6b-e6bb3e4a.litertlm";
 
     // One job for the app process, including across Activity recreation.
     private static final Object LOCK = new Object();
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
     private static String operation;
-    private static String problem;
+    private static LocalAiModel activeModel;
+    private static final EnumMap<LocalAiModel, String> problems = new EnumMap<>(LocalAiModel.class);
     private static volatile boolean paused;
 
-    private File model() {
-        return new File(getContext().getNoBackupFilesDir(), MODEL_FILENAME);
+    private File modelFile(LocalAiModel model) {
+        return new File(getContext().getNoBackupFilesDir(), model.filename);
     }
 
-    private File partial() {
-        return new File(getContext().getNoBackupFilesDir(), MODEL_FILENAME + ".part");
+    private File partialFile(LocalAiModel model) {
+        return new File(getContext().getNoBackupFilesDir(), model.filename + ".part");
     }
 
     private ActivityManager.MemoryInfo memory() {
@@ -51,149 +52,189 @@ public class LocalAiPlugin extends Plugin {
         return info;
     }
 
-    private String unsupportedReason() {
+    private String unsupportedReason(LocalAiModel model, ActivityManager.MemoryInfo memory) {
         if (!Process.is64Bit()) return "Offline AI needs a 64-bit Android device.";
-        if (memory().totalMem < MINIMUM_TOTAL_MEMORY) return "Offline AI needs a device with about 6 GB of RAM.";
-        return null;
+        if (memory.totalMem >= model.minimumTotalMemory) return null;
+        return model == LocalAiModel.LITE ? "Lite needs about 4 GB of RAM." : "Standard needs about 6 GB of RAM.";
     }
 
     @PluginMethod
     public void status(PluginCall call) {
         synchronized (LOCK) {
-            String unsupported = unsupportedReason();
-            boolean ready = model().length() == LocalAiModel.SIZE;
-            long bytes = ready ? LocalAiModel.SIZE : partial().length();
-            String state = operation;
-            if (state == null) {
-                if (unsupported != null) state = "unsupported";
-                else if (ready) state = "ready";
-                else state = bytes > 0 ? "paused" : "available";
-            } else if (paused && "downloading".equals(state)) {
-                state = "pausing";
+            var models = new JSArray();
+            var memory = memory();
+            for (LocalAiModel model : LocalAiModel.values()) {
+                String unsupported = unsupportedReason(model, memory);
+                boolean ready = modelFile(model).length() == model.size;
+                long bytes = ready ? model.size : partialFile(model).length();
+                String state;
+                if (model == activeModel) {
+                    state = paused && "downloading".equals(operation) ? "pausing" : operation;
+                } else if (unsupported != null) {
+                    state = "unsupported";
+                } else if (ready) {
+                    state = "ready";
+                } else {
+                    state = bytes > 0 ? "paused" : "available";
+                }
+                models.put(new JSObject().put("id", model.id).put("name", model.name).put("state", state)
+                    .put("bytes", bytes).put("total", model.size)
+                    .put("message", unsupported == null ? problems.get(model) : unsupported));
             }
-            call.resolve(new JSObject().put("state", state).put("bytes", bytes)
-                .put("total", LocalAiModel.SIZE).put("message", unsupported == null ? problem : unsupported));
+            call.resolve(new JSObject().put("models", models).put("busy", activeModel != null));
         }
+    }
+
+    private LocalAiModel requestedModel(PluginCall call) {
+        LocalAiModel model = LocalAiModel.fromId(call.getString("model"));
+        if (model == null) call.reject("Choose a model first.");
+        return model;
     }
 
     @PluginMethod
     public void download(PluginCall call) {
+        LocalAiModel model = requestedModel(call);
+        if (model == null) return;
         synchronized (LOCK) {
-            String unsupported = unsupportedReason();
+            String unsupported = unsupportedReason(model, memory());
             if (unsupported != null) { call.reject(unsupported); return; }
-            if (operation != null || model().length() == LocalAiModel.SIZE) { call.resolve(); return; }
+            if (activeModel != null) { call.reject("Wait for the current task to finish."); return; }
+            File target = modelFile(model);
+            if (target.length() == model.size) { call.resolve(); return; }
 
-            File target = model();
-            File partial = partial();
-            long remaining = Math.max(0, LocalAiModel.SIZE - partial.length());
+            File partial = partialFile(model);
+            long remaining = Math.max(0, model.size - partial.length());
             if (target.getParentFile().getUsableSpace() < remaining + STORAGE_RESERVE) {
                 call.reject("Free up some storage before downloading the model.");
                 return;
             }
             paused = false;
-            problem = null;
+            problems.remove(model);
+            activeModel = model;
             operation = "downloading";
-            WORKER.execute(() -> downloadModel(partial, target));
+            WORKER.execute(() -> downloadModel(model, partial, target));
             call.resolve();
         }
     }
 
-    private static void downloadModel(File partial, File target) {
+    private static void downloadModel(LocalAiModel model, File partial, File target) {
         try {
-            LocalAiModel.download(partial, () -> paused);
+            model.download(partial, () -> paused);
             synchronized (LOCK) {
                 if (paused) return;
                 operation = "verifying";
             }
-            if (!LocalAiModel.verify(partial)) {
+            if (!model.verify(partial)) {
                 if (!partial.delete()) throw new IOException("Could not remove the incomplete model.");
-                setProblem("The model failed its integrity check. Start the download again.");
+                setProblem(model, "The model failed its integrity check. Start the download again.");
                 return;
             }
             if (!partial.renameTo(target)) throw new IOException("Could not save the verified model.");
         } catch (IOException | RuntimeException error) {
-            if (!paused) setProblem("Download interrupted. Check your connection or storage, then retry.");
+            if (!paused) setProblem(model, "Download interrupted. Check your connection or storage, then retry.");
         } finally {
-            synchronized (LOCK) { operation = null; }
+            finishOperation();
         }
     }
 
-    private static void setProblem(String message) {
-        synchronized (LOCK) { problem = message; }
+    private static void finishOperation() {
+        synchronized (LOCK) {
+            activeModel = null;
+            operation = null;
+            paused = false;
+        }
+    }
+
+    private static void setProblem(LocalAiModel model, String message) {
+        synchronized (LOCK) { problems.put(model, message); }
     }
 
     @PluginMethod
     public void pause(PluginCall call) {
+        LocalAiModel model = requestedModel(call);
+        if (model == null) return;
         synchronized (LOCK) {
-            if ("downloading".equals(operation)) paused = true;
+            if (model == activeModel && "downloading".equals(operation)) paused = true;
             call.resolve();
         }
     }
 
     @PluginMethod
     public void remove(PluginCall call) {
+        LocalAiModel model = requestedModel(call);
+        if (model == null) return;
         synchronized (LOCK) {
-            if (operation != null) { call.reject("Wait for the current task to finish."); return; }
-            File target = model();
-            File partial = partial();
+            if (activeModel != null) { call.reject("Wait for the current task to finish."); return; }
+            File target = modelFile(model);
+            File partial = partialFile(model);
             if ((target.exists() && !target.delete()) || (partial.exists() && !partial.delete())) {
                 call.reject("Could not remove the model from this device.");
                 return;
             }
-            problem = null;
+            problems.remove(model);
             call.resolve();
         }
     }
 
     @PluginMethod
     public void summarize(PluginCall call) {
+        LocalAiModel model = requestedModel(call);
+        if (model == null) return;
         String facts = call.getString("facts", "").trim();
-        if (facts.isEmpty() || facts.length() > 1600) { call.reject("Choose a saved week to summarize."); return; }
+        if (facts.isEmpty() || facts.length() > 600) { call.reject("Choose a saved week to summarize."); return; }
 
         synchronized (LOCK) {
-            String unsupported = unsupportedReason();
+            var memory = memory();
+            String unsupported = unsupportedReason(model, memory);
             if (unsupported != null) { call.reject(unsupported); return; }
-            if (operation != null) { call.reject("Wait for the current task to finish."); return; }
-            File model = model();
-            if (model.length() != LocalAiModel.SIZE) { call.reject("Download the offline model first."); return; }
-            ActivityManager.MemoryInfo memory = memory();
-            if (memory.lowMemory || memory.availMem < MINIMUM_AVAILABLE_MEMORY) {
-                call.reject("Free up device memory by closing other apps, then try again.");
+            if (activeModel != null) { call.reject("Wait for the current task to finish."); return; }
+            File file = modelFile(model);
+            if (file.length() != model.size) { call.reject("Download the offline model first."); return; }
+            if (memory.lowMemory || memory.availMem < model.minimumAvailableMemory) {
+                call.reject("The phone is low on available memory. Close some apps and try again.");
                 return;
             }
             String cache = getContext().getCacheDir().getAbsolutePath();
+            activeModel = model;
             operation = "generating";
-            problem = null;
-            WORKER.execute(() -> generate(facts, model, cache, call));
+            problems.remove(model);
+            WORKER.execute(() -> generate(model, facts, file, cache, call));
         }
     }
 
-    private static void generate(String facts, File model, String cache, PluginCall call) {
+    private static void generate(LocalAiModel model, String facts, File file, String cache, PluginCall call) {
         JSObject result = null;
         try {
-            var config = new EngineConfig(model.getAbsolutePath(), new Backend.CPU(4, null),
-                null, null, 768, null, cache);
+            boolean lite = model == LocalAiModel.LITE;
+            var config = new EngineConfig(file.getAbsolutePath(), new Backend.CPU(model.threads, null),
+                null, null, model.contextTokens, null, lite ? ":nocache" : cache);
             try (var engine = new Engine(config)) {
                 engine.initialize();
-                String instructions = "Summarize this workout log in two short sentences. Use only the facts supplied. "
-                    + "Include the current week's workout and set counts. Compare with last week only if that is useful. "
-                    + "Use plain English. Do not guess numbers or give training advice.";
-                try (var conversation = engine.createConversation(new ConversationConfig(Contents.Companion.of(instructions)))) {
-                    var reply = conversation.sendMessage(facts, Collections.singletonMap("enable_thinking", false),
-                        null, null, null, 100, new ThinkingConfig(false), null);
+                String instructions = lite
+                    ? "Write one short workout recap in the second person. Use the exact numbers supplied. Return one sentence starting with You."
+                    : "Summarize this workout log in two short sentences. Use only the facts supplied. "
+                        + "Include the current week's workout and set counts. Compare with last week only if that is useful. "
+                        + "Use plain English. Do not guess numbers or give training advice.";
+                var contents = Contents.Companion.of(instructions);
+                var conversationConfig = lite
+                    ? new ConversationConfig(contents, Collections.emptyList(), Collections.emptyList(), new SamplerConfig(1, 1.0, 0.0, 0))
+                    : new ConversationConfig(contents);
+                try (var conversation = engine.createConversation(conversationConfig)) {
+                    var reply = conversation.sendMessage(facts, lite ? Collections.emptyMap() : Collections.singletonMap("enable_thinking", false),
+                        null, null, null, lite ? 45 : 100, lite ? null : new ThinkingConfig(false), null);
                     StringBuilder summary = new StringBuilder();
                     for (Content content : reply.getContents().getContents()) {
                         if (content instanceof Content.Text) summary.append(((Content.Text) content).getText());
                     }
                     String text = summary.toString().trim();
-                    if (text.isEmpty()) throw new IllegalStateException("Empty model response.");
+                    if (text.isEmpty() && !lite) throw new IllegalStateException("Empty model response.");
                     result = new JSObject().put("summary", text);
                 }
             }
         } catch (Exception | LinkageError error) {
             Log.w("GymLoggerLocalAi", "Offline model failed: " + error.getClass().getSimpleName());
         } finally {
-            synchronized (LOCK) { operation = null; }
+            finishOperation();
         }
         if (result == null) call.reject("The offline model could not finish a summary. Try again after closing other apps.");
         else call.resolve(result);
