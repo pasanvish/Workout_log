@@ -1,5 +1,6 @@
 import { isRpe, isSetType, isTrackingMode, MAX_EXERCISE_NOTES, recordCandidate, trackingOf } from './setTracking.ts';
-import { cleanAppearance } from './profile.ts';
+import { clearUnpairedSupersets } from './workoutFlow.ts';
+import { cleanAppearance, REST_DURATIONS } from './profile.ts';
 import type { WorkoutLog, ProfilePRs, CustomRoutine, CustomExercise, BodyMeasurementLog, ProfileAppearance } from './types';
 
 const byDateDesc = (a: { date: string }, b: { date: string }) =>
@@ -70,12 +71,14 @@ function parseLogs(value: unknown): WorkoutLog[] {
         sets,
         ...(isTrackingMode(exercise.tracking) ? { tracking: exercise.tracking } : {}),
         ...(text(exercise.notes) ? { notes: exercise.notes.slice(0, MAX_EXERCISE_NOTES) } : {}),
+        ...(typeof exercise.superset === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(exercise.superset) ? { superset: exercise.superset } : {}),
+        ...(typeof exercise.restSeconds === 'number' && REST_DURATIONS.includes(exercise.restSeconds) ? { restSeconds: exercise.restSeconds } : {}),
       }] : [];
     });
     if (!exercises.length) return [];
     const effort = typeof log.effort === 'number' && Number.isInteger(log.effort) && log.effort >= 1 && log.effort <= 5
       ? log.effort : undefined;
-    return [{ id: log.id, date: log.date, routineName: log.routineName, effort, exercises }];
+    return [{ id: log.id, date: log.date, routineName: log.routineName, effort, exercises: clearUnpairedSupersets(exercises) }];
   });
 }
 

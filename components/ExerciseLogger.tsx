@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Exercise, Set, TrackingMode } from '../types';
-import { emptySet, formatDuration, formatSetDetails, TRACKING_LABELS, trackingOf, isTrackingMode } from '../setTracking';
+import { emptySet, formatDuration, formatSetDetails, isCompleteSet, TRACKING_LABELS, trackingOf, isTrackingMode } from '../setTracking';
 import SetInputs, { setFields } from './SetInputs';
 import SetDetails from './SetDetails';
 import ExerciseNotes from './ExerciseNotes';
 import PlateCalculator from './PlateCalculator';
+import { REST_DURATIONS } from '../profile';
 
 interface ExerciseLoggerProps {
   exercise: Exercise;
   previous?: Exercise;
   onChange: (exercise: Exercise) => void;
   onRest: () => void;
+  onSetChecked: (setIndex: number) => void;
+  supersetControls?: React.ReactNode;
 }
 
-export default function ExerciseLogger({ exercise, previous, onChange, onRest }: ExerciseLoggerProps) {
+export default function ExerciseLogger({ exercise, previous, onChange, onRest, onSetChecked, supersetControls }: ExerciseLoggerProps) {
   const [stopwatch, setStopwatch] = useState<{ setId: string; start: number }>();
   const [tick, setTick] = useState(Date.now);
   const [plateCalculator, setPlateCalculator] = useState<string>();
@@ -29,7 +32,11 @@ export default function ExerciseLogger({ exercise, previous, onChange, onRest }:
 
   const updateSets = (sets: Set[]) => onChange({ ...exercise, sets });
   const updateSet = (id: string, changes: Partial<Set>) =>
-    updateSets(exercise.sets.map(set => set.id === id ? { ...set, ...changes } : set));
+    updateSets(exercise.sets.map(set => {
+      if (set.id !== id) return set;
+      const updated = { ...set, ...changes };
+      return updated.checked && !isCompleteSet(updated, mode) ? { ...updated, checked: false } : updated;
+    }));
 
   function changeMode(next: TrackingMode) {
     if (next === mode) return;
@@ -72,6 +79,20 @@ export default function ExerciseLogger({ exercise, previous, onChange, onRest }:
         </button>
       </div>
       {showSetDetails && <p className="text-xs text-text-secondary">RPE is rate of perceived exertion. 10 means maximum effort.</p>}
+      <details className="rounded-lg border border-border-color/60 px-3 py-2.5">
+        <summary className="cursor-pointer text-xs font-semibold">Rest and supersets</summary>
+        <div className="mt-2 space-y-2">
+          <label className="block text-xs text-text-secondary">
+            Rest after checking a set
+            <select className="track-input mt-1 w-full" aria-label={`Auto-rest for ${exercise.name}`} value={exercise.restSeconds ?? ''}
+              onChange={event => onChange({ ...exercise, restSeconds: Number(event.target.value) || undefined })}>
+              <option value="">Manual only</option>
+              {REST_DURATIONS.map(seconds => <option key={seconds} value={seconds}>{formatDuration(seconds)}</option>)}
+            </select>
+          </label>
+          {supersetControls}
+        </div>
+      </details>
       {mode === 'bodyweight' && <p className="text-xs text-text-secondary">Enter reps. Leave added kg blank for bodyweight only.</p>}
       <div className="grid grid-cols-[2rem_minmax(0,1fr)_2.5rem] items-center gap-2 text-center text-xs font-semibold text-text-secondary">
         <span>Set</span>
@@ -86,7 +107,14 @@ export default function ExerciseLogger({ exercise, previous, onChange, onRest }:
         return (
           <div key={set.id} className="space-y-1.5">
             <div className="grid grid-cols-[2rem_minmax(0,1fr)_2.5rem] items-center gap-2">
-              <span className="text-center text-sm font-semibold tabular-nums text-text-secondary">{index + 1}</span>
+              <button type="button" className="grid min-h-10 place-items-center rounded-lg border border-border-color text-sm font-semibold tabular-nums
+                text-text-secondary aria-pressed:border-brand-primary aria-pressed:bg-brand-primary/15 aria-pressed:text-brand-light disabled:opacity-60"
+                disabled={!isCompleteSet(set, mode)} aria-pressed={Boolean(set.checked)}
+                aria-label={`Check off ${exercise.name} set ${index + 1}`}
+                onClick={() => {
+                  updateSet(set.id, { checked: !set.checked });
+                  if (!set.checked) onSetChecked(index);
+                }}>{set.checked ? '✓' : index + 1}</button>
               <SetInputs exerciseName={exercise.name} index={index} set={set} mode={mode}
                 previous={previous && trackingOf(previous) === mode ? previous.sets[index] : undefined}
                 onChange={(field, value) => updateSet(set.id, { [field]: value })} />

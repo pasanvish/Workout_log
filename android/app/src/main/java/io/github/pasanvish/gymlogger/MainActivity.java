@@ -7,6 +7,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(FileExportPlugin.class);
+        registerPlugin(LocalAiPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

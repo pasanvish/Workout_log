@@ -1,4 +1,4 @@
-import { MASTER_EXERCISE_LIST } from './constants';
+import { MASTER_EXERCISE_LIST } from './constants.ts';
 
 type ArtworkSource = 'repdb' | 'workoutGuide';
 

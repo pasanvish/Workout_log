@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { formatSet, formatSetDetails, isCompleteSet, trackingOf } from './setTracking.ts';
+import { supersetLabels } from './workoutFlow.ts';
 import type { WorkoutLog } from './types';
 
 interface ExportFile {
@@ -40,6 +41,7 @@ export function workoutReport(profileName: string, logs: WorkoutLog[]) {
   const sessions = logs.map(log => {
     const date = new Date(log.date).toLocaleDateString(undefined, { dateStyle: 'long' });
     const effort = Number.isInteger(log.effort) && log.effort >= 1 && log.effort <= 5 ? ` · Effort ${log.effort}/5` : '';
+    const groups = supersetLabels(log.exercises);
     const exercises = log.exercises.map(exercise => {
       const mode = trackingOf(exercise);
       const sets = exercise.sets.filter(set => isCompleteSet(set, mode)).map(set => {
@@ -47,7 +49,8 @@ export function workoutReport(profileName: string, logs: WorkoutLog[]) {
         return `<li>${escape(formatSet(set, mode))}${details ? ` · ${escape(details)}` : ''} ${set.isPR ? '<strong>PR</strong>' : ''}</li>`;
       }).join('');
       const notes = exercise.notes?.trim() ? `<p class="notes">${escape(exercise.notes)}</p>` : '';
-      return `<h3>${escape(exercise.name)}</h3>${notes}<ul>${sets}</ul>`;
+      const superset = exercise.superset && groups.get(exercise.superset);
+      return `<h3>${escape(exercise.name)}${superset ? ` · ${escape(superset)}` : ''}</h3>${notes}<ul>${sets}</ul>`;
     }).join('');
     return `<article><h2>${escape(log.routineName)}</h2><p>${escape(date)}${effort}</p>${exercises}</article>`;
   }).join('');
