@@ -4,7 +4,11 @@ import type { WorkoutLog } from './types';
 
 type ModelState = 'available' | 'downloading' | 'pausing' | 'paused' | 'verifying' | 'ready' | 'generating' | 'unsupported';
 
+export type ModelId = 'lite' | 'qwen';
+
 interface ModelStatus {
+  id: ModelId;
+  name: string;
   state: ModelState;
   bytes: number;
   total: number;
@@ -13,12 +17,25 @@ interface ModelStatus {
 
 export const hasNativeAi = Capacitor.getPlatform() === 'android';
 export const localAi = registerPlugin<{
-  status(): Promise<ModelStatus>;
-  download(): Promise<void>;
-  pause(): Promise<void>;
-  remove(): Promise<void>;
-  summarize(options: { facts: string }): Promise<{ summary: string }>;
+  status(): Promise<{ models: ModelStatus[]; busy: boolean }>;
+  download(options: { model: ModelId }): Promise<void>;
+  pause(options: { model: ModelId }): Promise<void>;
+  remove(options: { model: ModelId }): Promise<void>;
+  summarize(options: { model: ModelId; facts: string }): Promise<{ summary: string }>;
 }>('LocalAi');
+
+const quantity = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+export function formatLiteRecap(modelText: string, workouts: number, sets: number) {
+  const counts = `${quantity(workouts, 'workout')} and ${quantity(sets, 'set')}`;
+  const past = '(?:logged|completed|recorded|did)';
+  const valid = new RegExp(`^(?:This week,? you ${past} ${counts}|You ${past} ${counts} this week)[.!]?$`, 'i');
+  const summary = modelText.trim().replace(/\s+/g, ' ')
+    .replace(/^I /i, 'You ').replace(/^This week,? I /i, 'This week, you ');
+  return valid.test(summary)
+    ? { summary, generated: true }
+    : { summary: `You logged ${counts} this week.`, generated: false };
+}
 
 export function weeklySummaryFacts(logs: WorkoutLog[], goal: number, now = new Date()) {
   const thisWeekStart = weekStart(now);
@@ -38,6 +55,7 @@ export function weeklySummaryFacts(logs: WorkoutLog[], goal: number, now = new D
     key: `${thisWeekStart}:${goal}:${thisWeek.workouts}:${thisWeek.sets}:${lastWeek.workouts}:${lastWeek.sets}`,
     thisWeek,
     lastWeek,
+    litePrompt: `Rewrite this as a short fitness recap. ${formatLiteRecap('', thisWeek.workouts, thisWeek.sets).summary}`,
     facts: `This week: ${thisWeek.workouts} workouts and ${thisWeek.sets} logged sets. `
       + `Last week: ${lastWeek.workouts} workouts and ${lastWeek.sets} logged sets. Weekly workout goal: ${goal}.`,
   };
