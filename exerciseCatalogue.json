@@ -1111,7 +1111,7 @@
   {
     "name": "Decline EZ Bar Triceps Extension",
     "category": "Triceps",
-    "equipment": "Barbell",
+    "equipment": "EZ bar",
     "tracking": "weight",
     "primaryMuscles": [
       "Triceps"
@@ -1829,7 +1829,7 @@
   {
     "name": "Incline Bench Pull",
     "category": "Back",
-    "equipment": "Barbell",
+    "equipment": "Dumbbells",
     "tracking": "weight",
     "primaryMuscles": [
       "Mid back"

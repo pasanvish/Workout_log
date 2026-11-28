@@ -1,6 +1,6 @@
 import illustrations from './exerciseVisuals.json' with { type: 'json' };
 
-export type ExerciseFrame = 'start' | 'mid' | 'end' | 'hold';
+export type ExerciseFrame = 'start' | 'mid' | 'end' | 'hold' | 'pose';
 
 interface ExerciseVisual {
   id: string;
