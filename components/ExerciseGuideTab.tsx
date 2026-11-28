@@ -19,7 +19,7 @@ export default function ExerciseGuideTab({ customExercises, onAddCustomExercise 
       <header className="workout-hero">
         <div>
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Exercises</h2>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-text-secondary">Search by exercise or muscle. Open a guide to see the movement, form cues, and muscles it works.</p>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-text-secondary">Search by exercise, muscle, or equipment. Open a guide to see the movement, form cues, and muscles it works.</p>
         </div>
       </header>
       <section className="tracking-panel" aria-label="Search the exercise library">

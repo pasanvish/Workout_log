@@ -1,6 +1,8 @@
 import { MASTER_EXERCISE_LIST } from './constants.ts';
 
-type ArtworkSource = 'repdb' | 'workoutGuide';
+import { exerciseEquipment, getCatalogueExercise } from './exerciseCatalogue.ts';
+
+type ArtworkSource = 'repdb' | 'workoutGuide' | 'catalogue';
 
 interface ExerciseReference {
   id: string;
@@ -326,10 +328,17 @@ const categories = new Map(
 );
 
 export function getExerciseDetails(name: string) {
-  const reference = Object.hasOwn(references, name) ? references[name] : undefined;
+  const original = Object.hasOwn(references, name) ? references[name] : undefined;
+  const catalogue = getCatalogueExercise(name);
+  const reference: ExerciseReference | undefined = original ?? (catalogue && {
+    id: name, source: 'catalogue', frames: [],
+    primaryMuscles: catalogue.primaryMuscles, secondaryMuscles: catalogue.secondaryMuscles, description: '',
+  });
   return {
     category: categories.get(name) ?? 'Custom exercise',
+    equipment: exerciseEquipment(name),
     description: reference?.description ?? 'Custom exercise added to your library.',
     reference,
+    catalogue,
   };
 }

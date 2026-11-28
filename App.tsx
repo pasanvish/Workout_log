@@ -8,6 +8,7 @@ import type { HistoryView } from './components/WorkoutHistory';
 import { BADGES } from './badges';
 import { formatRecord, recordCandidate, trackingOf } from './setTracking';
 import { cleanAppearance } from './profile';
+import { cleanWeeklyPlan, mergeWeeklyPlan, type WeeklyPlan } from './weeklyPlan';
 import { exportName, saveExport } from './exports';
 import PRNotificationModal from './components/PRNotificationModal';
 import { WorkoutLog, Profile, CustomRoutine, CustomExercise, BodyMeasurementLog, Badge } from './types';
@@ -33,6 +34,7 @@ const App: React.FC = () => {
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [workoutLogs, setWorkoutLogs] = useState<Record<string, WorkoutLog[]>>({});
   const [customRoutines, setCustomRoutines] = useState<Record<string, CustomRoutine[]>>({});
+  const [weeklyPlans, setWeeklyPlans] = useState<Record<string, WeeklyPlan>>({});
   const [customExercises, setCustomExercises] = useState<Record<string, CustomExercise[]>>({});
   const [bodyMeasurements, setBodyMeasurements] = useState<Record<string, BodyMeasurementLog[]>>({});
   
@@ -58,11 +60,17 @@ const App: React.FC = () => {
       const savedCustomRoutines = JSON.parse(localStorage.getItem('customRoutines') || '{}');
       const savedCustomExercises = JSON.parse(localStorage.getItem('customExercises') || '{}');
       const savedBodyMeasurements = JSON.parse(localStorage.getItem('bodyMeasurements') || '{}');
+      let savedPlans = {};
+      try {
+        const value = JSON.parse(localStorage.getItem('weeklyPlans') || '{}');
+        if (value && typeof value === 'object' && !Array.isArray(value)) savedPlans = value;
+      } catch { /* Bad plan data should leave the rest of the profile readable. */ }
 
       setProfiles(savedProfiles.map(({ id, name, ...appearance }: Profile) => ({ id, name, ...cleanAppearance(appearance) })));
       setActiveProfileId(savedActiveProfileId);
       setWorkoutLogs(savedWorkoutLogs);
       setCustomRoutines(savedCustomRoutines);
+      setWeeklyPlans(savedPlans);
       setCustomExercises(savedCustomExercises);
       setBodyMeasurements(savedBodyMeasurements);
     } catch (error) {
@@ -81,10 +89,11 @@ const App: React.FC = () => {
       localStorage.setItem('customRoutines', JSON.stringify(customRoutines));
       localStorage.setItem('customExercises', JSON.stringify(customExercises));
       localStorage.setItem('bodyMeasurements', JSON.stringify(bodyMeasurements));
+      localStorage.setItem('weeklyPlans', JSON.stringify(weeklyPlans));
     } catch (error) {
       console.error("Failed to save data to localStorage", error);
     }
-  }, [profiles, activeProfileId, workoutLogs, customRoutines, customExercises, bodyMeasurements, isAppReady]);
+  }, [profiles, activeProfileId, workoutLogs, customRoutines, customExercises, bodyMeasurements, weeklyPlans, isAppReady]);
 
   const activeProfile = useMemo(() => profiles.find(p => p.id === activeProfileId), [profiles, activeProfileId]);
   const { logs: activeLogs, prs: activePRs } = useMemo(
@@ -92,6 +101,8 @@ const App: React.FC = () => {
     [workoutLogs, activeProfileId],
   );
   const activeRoutines = useMemo(() => (activeProfileId && customRoutines[activeProfileId]) || [], [customRoutines, activeProfileId]);
+  const activePlan = useMemo(() => cleanWeeklyPlan(activeProfileId ? weeklyPlans[activeProfileId] : undefined, activeRoutines),
+    [activeProfileId, activeRoutines, weeklyPlans]);
   const activeCustomExercises = useMemo(() => (activeProfileId && customExercises[activeProfileId]) || [], [customExercises, activeProfileId]);
   const activeBodyMeasurements = useMemo(() => (activeProfileId && bodyMeasurements[activeProfileId]) || [], [bodyMeasurements, activeProfileId]);
   
@@ -147,8 +158,11 @@ const App: React.FC = () => {
     const exercises = mergeById(activeCustomExercises, backup.customExercises);
     const measurements = sortByDateDesc(mergeById(activeBodyMeasurements, backup.bodyMeasurements));
     const profileId = activeProfile.id;
+    const plan = mergeWeeklyPlan(activePlan, backup.weeklyPlan ?? {}, routines);
+    const plannedDays = Object.keys(plan).length - Object.keys(activePlan).length;
     replaceLogs(profileId, logs);
     setCustomRoutines(previous => ({ ...previous, [profileId]: routines }));
+    if (plannedDays > 0) setWeeklyPlans(previous => ({ ...previous, [profileId]: plan }));
     setCustomExercises(previous => ({ ...previous, [profileId]: exercises }));
     setBodyMeasurements(previous => ({ ...previous, [profileId]: measurements }));
     if (backup.profileAppearance) {
@@ -160,9 +174,10 @@ const App: React.FC = () => {
       [routines.length - activeRoutines.length, 'routines'],
       [exercises.length - activeCustomExercises.length, 'custom exercises'],
       [measurements.length - activeBodyMeasurements.length, 'measurements'],
+      [plannedDays, plannedDays === 1 ? 'scheduled day' : 'scheduled days'],
     ] as const;
     const summary = added.filter(([count]) => count > 0).map(([count, label]) => `${count} ${label}`);
-    return summary.length ? `Import complete: ${summary.join(', ')} added.` : 'Backup read. No new workout or measurement entries to add.';
+    return summary.length ? `Import complete: ${summary.join(', ')} added.` : 'Backup read. No new entries to add.';
   };
 
   const handleExportLogs = () => {
@@ -173,6 +188,7 @@ const App: React.FC = () => {
       exportedAt: new Date().toISOString(),
       profileName: activeProfile.name,
       profileAppearance: cleanAppearance(activeProfile),
+      weeklyPlan: activePlan,
       workoutLogs: activeLogs,
       customRoutines: activeRoutines,
       customExercises: activeCustomExercises,
@@ -282,6 +298,8 @@ const App: React.FC = () => {
                     onSave={addWorkoutLog} 
                     routines={activeRoutines}
                     onAddRoutine={addRoutine}
+                    weeklyPlan={activePlan}
+                    onSavePlan={plan => setWeeklyPlans(previous => ({ ...previous, [activeProfileId]: plan }))}
                     logs={activeLogs}
                     customExercises={activeCustomExercises}
                     onAddCustomExercise={addCustomExercise}

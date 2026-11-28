@@ -3,6 +3,7 @@ import ExerciseArtwork from './ExerciseArtwork';
 import ExerciseMuscles from './ExerciseMuscles';
 import ModalFrame from './ModalFrame';
 import { ExerciseTargetMap } from './BodyMuscleMap';
+import { CATALOGUE_SOURCE } from '../exerciseCatalogue';
 import { getExerciseDetails } from '../exerciseDetails';
 import { getExerciseDemo } from '../exerciseDemos';
 import { EXERCISE_INSTRUCTIONS, EXERCISE_QUICK_STEPS } from '../instructions';
@@ -25,7 +26,7 @@ function instructionSections(text: string) {
 
 function Positions({ name }: { name: string }) {
   const { reference } = getExerciseDetails(name);
-  if (!reference) return null;
+  if (!reference?.frames.length) return null;
   const multiple = reference.frames.length > 1;
   return <>
     <div className={`grid gap-2 ${multiple ? 'grid-cols-2' : 'grid-cols-1'}`}>
@@ -50,7 +51,8 @@ function ExerciseGuide({ name, onClose }: { name: string; onClose: () => void })
   const details = getExerciseDetails(name);
   const demo = getExerciseDemo(name);
   const instructions = Object.hasOwn(EXERCISE_INSTRUCTIONS, name) ? EXERCISE_INSTRUCTIONS[name] : undefined;
-  const quickSteps = Object.hasOwn(EXERCISE_QUICK_STEPS, name) ? EXERCISE_QUICK_STEPS[name] : [];
+  const quickSteps = Object.hasOwn(EXERCISE_QUICK_STEPS, name) ? EXERCISE_QUICK_STEPS[name] : details.catalogue?.steps ?? [];
+  const hasPositions = Boolean(details.reference?.frames.length);
   const sections = instructions ? instructionSections(instructions) : quickSteps.length ? [{ title: 'How to do it', steps: quickSteps }] : [];
 
   return (
@@ -58,7 +60,7 @@ function ExerciseGuide({ name, onClose }: { name: string; onClose: () => void })
       <button type="button" onClick={onClose} className="panel-action">Done</button>
     }>
       <div className="space-y-4">
-        {(demo || details.reference) && <section className="guide-summary">
+        {(demo || hasPositions) && <section className="guide-summary">
           {demo && !videoError ? <>
             <h3 className="mb-2 font-semibold">Watch the movement</h3>
             <video controls playsInline loop muted preload="metadata"
@@ -84,7 +86,8 @@ function ExerciseGuide({ name, onClose }: { name: string; onClose: () => void })
         </section>}
         <section className="tracking-panel">
           <h3 className="font-semibold">Target muscles</h3>
-          <p className="my-2 text-sm leading-relaxed text-text-secondary">{details.description}</p>
+          {details.description && <p className="my-2 text-sm leading-relaxed text-text-secondary">{details.description}</p>}
+          {details.equipment && <p className="my-2 text-xs font-medium text-text-secondary">{details.equipment}</p>}
           {details.reference ? <>
             <div className="mb-3"><ExerciseMuscles name={name} /></div>
             <ExerciseTargetMap primary={details.reference.primaryMuscles} secondary={details.reference.secondaryMuscles} />
@@ -96,6 +99,9 @@ function ExerciseGuide({ name, onClose }: { name: string; onClose: () => void })
             <ul className="mt-2 list-disc space-y-1.5 pl-4 text-sm leading-relaxed text-text-secondary">
               {steps.map(step => <li key={step}>{step}</li>)}
             </ul>
+            {details.catalogue && <p className="mt-3 text-xs text-text-secondary">
+              <a className="underline" href={CATALOGUE_SOURCE} target="_blank" rel="noopener noreferrer">Exercise data from Free Exercise DB</a>
+            </p>}
           </section>
         ))}
       </div>

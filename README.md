@@ -70,7 +70,7 @@ The project is organized into a clear and logical structure:
 All your workout data is stored in your browser's `localStorage` under the key `workoutLogs`.
 
 - **Privacy**: Your data is 100% private and never sent to any server.
-- **Backup**: It is highly recommended to use the **Export** feature regularly to back up your data. Choose **Full backup (.json)** to export the active profile’s workouts, routines, measurements, and appearance. Android opens a Save As dialog.
+- **Backup**: It is highly recommended to use the **Export** feature regularly to back up your data. Choose **Full backup (.json)** to export the active profile’s workouts, routines, weekly plan, custom exercises, measurements, and appearance. Android opens a Save As dialog.
 - **Restore**: Use **Import backup** to restore a Gym Logger JSON file into the selected profile. Existing entries keep their values. **Workout report (.html)** exports a readable report that can be opened and printed in a browser.
 
 ## 🤝 Contributing
@@ -84,7 +84,11 @@ This project is licensed under the MIT License.
 
 ### Interface and Android updates
 
-The web and Android apps share the React interface. The Exercises tab covers all 61 built-in movements with form cues, illustrations, and front and back muscle maps. The signed Android app bundles 22 motion demos for offline playback. The website caches each demo after it first loads.
+The web and Android apps share the React interface. The Exercises tab covers 265 built-in movements with form cues and front and back muscle maps. Search by exercise, muscle, or equipment. The original 61 entries have illustrations, and the signed Android app bundles 22 motion demos for offline playback. The website caches each demo after it first loads.
+
+In **Workout → Weekly plan**, assign saved routines to any day of the week, leave rest days open, and start the scheduled routine directly. Each profile has its own plan, which is included in full backups.
+
+The additional 204 entries use public-domain exercise names, equipment, muscle targets, and instructions from [Free Exercise DB](https://github.com/yuhonas/free-exercise-db/tree/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5).
 
 Exercise data by [RepDB (repdb.co)](https://repdb.co), used in the app under the [RepDB Free Tier License](https://github.com/RepDB/exercise-dataset/blob/main/LICENSE-DATA.md). Overhead press and triceps dip artwork by [Bryl Lim and Everkinetic](https://github.com/bryllim/workout-guide), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) and converted to WebP for this app.
 

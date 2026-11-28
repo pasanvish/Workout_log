@@ -11,9 +11,9 @@ interface Region {
   single?: boolean;
 }
 
-const shoulderFront: Region = { group: 'Shoulders', muscles: ['Front delts', 'Side delts'], path: 'M42 64 Q48 60 55 62 Q53 69 44 74 L39 88 Q34 86 35 80 Q36 69 42 64 Z' };
-const shoulderBack: Region = { group: 'Shoulders', muscles: ['Rear delts', 'Side delts'], path: 'M40 64 Q48 60 55 64 Q49 71 46 80 L38 89 Q33 86 35 78 Q37 69 40 64 Z' };
-const forearms: Region = { group: 'Forearms', muscles: ['Brachioradialis', 'Forearm flexors'], path: 'M29 116 Q34 119 35 123 L25 149 L20 154 Q20 139 24 129 Z' };
+const shoulderFront: Region = { group: 'Shoulders', muscles: ['Front delts', 'Side delts', 'Shoulders'], path: 'M42 64 Q48 60 55 62 Q53 69 44 74 L39 88 Q34 86 35 80 Q36 69 42 64 Z' };
+const shoulderBack: Region = { group: 'Shoulders', muscles: ['Rear delts', 'Side delts', 'Shoulders'], path: 'M40 64 Q48 60 55 64 Q49 71 46 80 L38 89 Q33 86 35 78 Q37 69 40 64 Z' };
+const forearms: Region = { group: 'Forearms', muscles: ['Brachioradialis', 'Forearm flexors', 'Forearms'], path: 'M29 116 Q34 119 35 123 L25 149 L20 154 Q20 139 24 129 Z' };
 
 const front: Region[] = [
   shoulderFront,
@@ -25,20 +25,21 @@ const front: Region[] = [
   { group: 'Core', muscles: ['Obliques', 'Hip flexors'], path: 'M54 114 L60 130 Q65 135 70 135 L69 146 Q59 142 50 135 Z' },
   { group: 'Quads', muscles: ['Quads'], path: 'M49 138 Q58 145 64 149 Q66 163 61 185 L56 201 Q52 197 51 185 Q44 157 49 138 Z' },
   { group: 'Adductors', muscles: ['Hip adductors'], path: 'M65 150 Q69 149 70 154 Q70 178 61 193 L63 183 Z' },
-  { group: 'Calves', muscles: ['Gastrocnemius', 'Soleus'], path: 'M54 208 Q59 206 60 214 Q61 224 60 236 L57 242 Q54 234 54 224 Z' },
+  { group: 'Calves', muscles: ['Gastrocnemius', 'Soleus', 'Calves'], path: 'M54 208 Q59 206 60 214 Q61 224 60 236 L57 242 Q54 234 54 224 Z' },
 ];
 
 const back: Region[] = [
   shoulderBack,
-  { group: 'Back', muscles: ['Traps', 'Rhomboids'], path: 'M72 50 L84 58 L97 64 L85 73 L72 96 L59 73 L47 64 L60 58 Z', single: true },
-  { group: 'Back', muscles: ['Lats', 'Rhomboids'], path: 'M47 82 Q57 78 62 92 L68 105 L68 118 Q59 113 52 103 Z' },
+  { group: 'Neck', muscles: ['Neck'], path: 'M65 42 Q72 46 79 42 L80 50 L72 56 L64 50 Z', single: true },
+  { group: 'Back', muscles: ['Traps', 'Rhomboids', 'Mid back'], path: 'M72 50 L84 58 L97 64 L85 73 L72 96 L59 73 L47 64 L60 58 Z', single: true },
+  { group: 'Back', muscles: ['Lats', 'Rhomboids', 'Mid back'], path: 'M47 82 Q57 78 62 92 L68 105 L68 118 Q59 113 52 103 Z' },
   { group: 'Back', muscles: ['Spinal erectors'], path: 'M67 101 L70 101 L70 133 L62 138 Q60 122 67 101 Z' },
   { group: 'Triceps', muscles: ['Triceps'], path: 'M36 90 Q42 86 44 92 Q42 105 35 114 L30 112 Q30 103 36 90 Z' },
   forearms,
-  { group: 'Glutes', muscles: ['Glute max', 'Glute medius', 'Hip abductors'], path: 'M50 133 Q57 129 67 138 Q72 147 67 158 Q60 167 49 160 Q46 148 50 133 Z' },
+  { group: 'Glutes', muscles: ['Glute max', 'Glute medius', 'Hip abductors', 'Glutes'], path: 'M50 133 Q57 129 67 138 Q72 147 67 158 Q60 167 49 160 Q46 148 50 133 Z' },
   { group: 'Hamstrings', muscles: ['Hamstrings'], path: 'M49 163 Q57 168 67 164 Q66 182 60 194 L57 202 Q52 197 51 185 Z' },
   { group: 'Adductors', muscles: ['Hip adductors'], path: 'M68 161 L70 161 Q70 183 63 199 L62 193 Q68 182 68 161 Z' },
-  { group: 'Calves', muscles: ['Gastrocnemius', 'Soleus'], path: 'M54 207 Q57 203 62 207 Q67 214 63 227 L58 244 L55 241 Q55 228 53 219 Z' },
+  { group: 'Calves', muscles: ['Gastrocnemius', 'Soleus', 'Calves'], path: 'M54 207 Q57 203 62 207 Q67 214 63 227 L58 244 L55 241 Q55 228 53 219 Z' },
 ];
 
 function BodySide({ label, regions, color }: { label: string; regions: Region[]; color: (region: Region) => string | undefined }) {
