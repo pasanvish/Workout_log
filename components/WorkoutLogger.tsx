@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Exercise, WorkoutLog, CustomRoutine, CustomExercise, Profile } from '../types';
+import { Exercise, WorkoutLog, CustomRoutine, CustomExercise, Profile, TrackingMode } from '../types';
 import ExerciseArtwork from './ExerciseArtwork';
 import TrainingWelcome from './TrainingWelcome';
 import WeeklyPlanner from './WeeklyPlanner';
@@ -16,6 +16,9 @@ import RoutineEditor from './RoutineEditor';
 import WorkoutFeedbackModal from './WorkoutFeedbackModal';
 import ExercisePickerModal from './ExercisePickerModal';
 import ExerciseInstructionModal from './ExerciseInstructionModal';
+import ExerciseSwapModal from './ExerciseSwapModal';
+import ProgressionHint from './ProgressionHint';
+import { hasWorkingSets } from '../progression';
 
 interface WorkoutLoggerProps {
   onSave: (log: WorkoutLog) => void;
@@ -64,21 +67,39 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
   }, [draftKey, selectedRoutine, exercises, restEndsAt]);
 
   // Most recent sets logged for each exercise (logs are newest first).
-  const lastTime = useMemo(() => {
-    const map: Record<string, { date: string; exercise: Exercise }> = Object.create(null);
-    for (const log of logs) for (const exercise of log.exercises) map[exercise.name] ??= { date: log.date, exercise };
-    return map;
+  const { lastTime, recentWorking } = useMemo(() => {
+    const last: Record<string, { date: string; exercise: Exercise }> = Object.create(null);
+    const working = new Map<string, Partial<Record<TrackingMode, Exercise>>>();
+    for (const log of logs) for (const exercise of log.exercises) {
+      last[exercise.name] ??= { date: log.date, exercise };
+      const mode = trackingOf(exercise);
+      const modes = working.get(exercise.name);
+      if (modes?.[mode] || !hasWorkingSets(exercise)) continue;
+      if (modes) modes[mode] = exercise;
+      else working.set(exercise.name, { [mode]: exercise });
+    }
+    return { lastTime: last, recentWorking: working };
   }, [logs]);
   const [isRoutineEditorOpen, setIsRoutineEditorOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [pendingLog, setPendingLog] = useState<Omit<WorkoutLog, 'effort'> | null>(null);
   const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false);
+  const [swapIndex, setSwapIndex] = useState<number>();
   const [instructionModalState, setInstructionModalState] = useState<{isOpen: boolean, exerciseName: string | null}>({isOpen: false, exerciseName: null});
 
   const newExercise = (name: string): Exercise => ({
     name, tracking: defaultTracking(name, customExercises), sets: [emptySet()],
     restSeconds: lastTime[name]?.exercise.restSeconds,
   });
+
+  function swapExercise(name: string) {
+    setExercises(current => current.map((exercise, index) => index === swapIndex ? {
+      ...newExercise(name),
+      superset: exercise.superset,
+      sets: exercise.sets.map(set => ({ ...emptySet(), setType: set.setType })),
+    } : exercise));
+    setSwapIndex(undefined);
+  }
 
   function editSuperset(from: number, to?: number) {
     setExercises(current => {
@@ -250,6 +271,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
               <p className="text-xs text-text-secondary">Tap a set number to check off that set.</p>
               {exercises.map((exercise, exIndex) => {
                 const details = getExerciseDetails(exercise.name);
+                const previous = recentWorking.get(exercise.name)?.[trackingOf(exercise)];
                 const group = exercise.superset ? groupLabels.get(exercise.superset) : undefined;
                 return (
                  <div key={`${exercise.name}-${exIndex}`} id={`session-exercise-${exIndex}`} tabIndex={-1}
@@ -278,7 +300,12 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
                             <InfoIcon />
                         </button>
                     </div>
-                    <div className="p-4 sm:p-5"><ExerciseLogger exercise={exercise} previous={lastTime[exercise.name]?.exercise}
+                    <div className="p-4 sm:p-5">
+                      <div className="mb-3 flex justify-end">
+                        <button type="button" className="panel-action" aria-label={`Swap ${exercise.name}`} onClick={() => setSwapIndex(exIndex)}>Swap exercise</button>
+                      </div>
+                      {previous && <ProgressionHint previous={previous} />}
+                      <ExerciseLogger exercise={exercise} previous={lastTime[exercise.name]?.exercise}
                       onChange={updated => setExercises(current => current.map((item, index) => index === exIndex ? updated : item))}
                       onSetChecked={setIndex => completeSet(exIndex, setIndex)}
                       onRest={() => setRestEndsAt(Date.now() + (exercise.restSeconds ?? profile.restSeconds ?? DEFAULT_REST_SECONDS) * 1000)}
@@ -362,6 +389,10 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
         onAddCustomExercise={onAddCustomExercise}
         currentExercises={exercises}
       />
+      {swapIndex !== undefined && exercises[swapIndex] && <ExerciseSwapModal
+        exercise={exercises[swapIndex]} exercises={exercises} customExercises={customExercises}
+        onClose={() => setSwapIndex(undefined)} onSwap={swapExercise}
+      />}
       <ExerciseInstructionModal
         isOpen={instructionModalState.isOpen}
         onClose={() => setInstructionModalState({isOpen: false, exerciseName: null})}

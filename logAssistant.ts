@@ -1,6 +1,11 @@
 import { formatRecord, formatSet, isCompleteSet, progressMetric, trackingOf } from './setTracking.ts';
+import { weeklySummaryFacts } from './localAi.ts';
+import { latestWorkingExercise, progressionFor } from './progression.ts';
+import { weeklyMuscleSets } from './trainingVolume.ts';
+import { weeklyCoach } from './weeklyCoach.ts';
+import type { WeeklyPlan } from './weeklyPlan.ts';
 import { completedSetCount, localLogDate, weekStart } from './training.ts';
-import type { ProfilePRs, WorkoutLog } from './types';
+import type { CustomExercise, CustomRoutine, ProfilePRs, WorkoutLog } from './types';
 
 const examples = {
   week: [
@@ -62,24 +67,66 @@ export function classifyLogQuestion(question: string): Intent | undefined {
   return best.score >= 0.23 && best.score - second.score >= 0.06 ? best.intent : undefined;
 }
 
-export const LOG_QUESTIONS = ['How many workouts this week?', 'What did I do last workout?', 'Show my personal records'];
+export const LOG_QUESTIONS = [
+  'What should I train next?', 'Which muscles did I train this week?', 'How did I compare to last week?', 'What did I do last workout?',
+];
 
 const unsupportedPeriod = /\b(today|yesterday|tomorrow|last week|next week|last month|this month|this year|last year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/;
 const unsupportedTopic = /\b(should|recommend|suggest|prescribe|calories|nutrition|meal|diet|split|how long)\b/;
-const fallback = 'Try asking about this week’s training, your last workout, or personal records. Include an exercise name to look up its last sets or records.';
+const fallback = 'Ask about your next workout, muscles trained this week, your last sets, or personal records. For progression, try “Can I add weight to Bench Press?”';
 const dateLabel = (value: string) => localLogDate(value).toLocaleDateString(undefined, { dateStyle: 'medium' });
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
-export function answerLogQuestion(question: string, logs: WorkoutLog[], records: ProfilePRs, goal: number, now = new Date()) {
+interface CoachData {
+  customExercises: CustomExercise[];
+  routines: CustomRoutine[];
+  plan: WeeklyPlan;
+}
+const emptyCoachData: CoachData = { customExercises: [], routines: [], plan: {} };
+
+export function answerLogQuestion(question: string, logs: WorkoutLog[], records: ProfilePRs, goal: number, now = new Date(), coach = emptyCoachData) {
   const normalized = ` ${normalize(question)} `;
   const exerciseNames = [...new Set(logs.flatMap(log => log.exercises.map(exercise => exercise.name)))];
-  const mentioned = exerciseNames.map(name => ({ name, key: ` ${normalize(name)} ` }))
-    .filter(({ key }) => key.trim() && normalized.includes(key)).sort((a, b) => b.key.length - a.key.length);
+  const names = exerciseNames.map(name => ({ name, key: ` ${normalize(name)} `, base: ` ${normalize(name.replace(/\s+\([^()]+\)$/, ''))} ` }));
+  const mentioned = names.flatMap(item => {
+    if (item.key.trim() && normalized.includes(item.key)) return [item];
+    if (item.base !== item.key && normalized.includes(item.base) && names.filter(other => other.base === item.base).length === 1) {
+      return [{ ...item, key: item.base }];
+    }
+    return [];
+  }).sort((a, b) => b.key.length - a.key.length);
   const match = mentioned[0];
   const request = match ? normalized.replace(match.key, ' ') : normalized;
+  const several = mentioned.some(({ key }) => !match?.key.includes(key));
+  if (several || /\b(injury|injured|pain|rehab|medical|diagnose|calories|nutrition|diet)\b/.test(request)) return fallback;
+  if (match && /\b(progress|progression|add (?:more )?(?:weight|load|reps|time)|increase (?:the )?(?:weight|load|reps|time))\b/.test(request)) {
+    const previous = latestWorkingExercise(logs, match.name);
+    const hint = previous && progressionFor(previous);
+    return hint ? `${match.name}\n${hint.title}. ${hint.reason}` : `Log a working set for ${match.name} to see a progression suggestion.`;
+  }
+  if (!match && /\b(?:workouts?|train|training|session)\b.*\bnext\b|\bnext (?:workout|session)\b/.test(request)
+    && !/\bnext (?:week|month|year)\b/.test(request)) {
+    const insights = weeklyCoach(logs, coach.customExercises, goal, coach.plan, coach.routines, now);
+    const item = insights.focus.find(item => item.id === 'schedule') ?? insights.focus[0];
+    return item ? `${item.title}\n${item.detail}` : 'Open your weekly plan or log a session to get a focus for your next workout.';
+  }
+  if (!match && /\bmuscles?\b/.test(request) && /\b(?:this|last) week\b/.test(request)) {
+    const start = new Date(weekStart(now));
+    const lastWeek = request.includes('last week');
+    if (lastWeek) start.setDate(start.getDate() - 7);
+    const sessions = logs.filter(log => weekStart(localLogDate(log.date)) === start.getTime());
+    const groups = weeklyMuscleSets(sessions, coach.customExercises, start.getTime());
+    const period = lastWeek ? 'last week' : 'this week';
+    return groups.length ? `Working sets by muscle ${period}\n${groups.map(([name, sets]) => `${name} · ${plural(sets, 'set')}`).join('\n')}`
+      : `There are no working sets in your muscle chart ${period}.`;
+  }
+  if (!match && /\blast week\b/.test(request) && /\b(compare|comparison|versus|vs)\b/.test(request)) {
+    const { thisWeek, lastWeek } = weeklySummaryFacts(logs, goal, now);
+    return `This week · ${plural(thisWeek.workouts, 'workout')}, ${plural(thisWeek.sets, 'set')}\nLast week · ${plural(lastWeek.workouts, 'workout')}, ${plural(lastWeek.sets, 'set')}\nWeekly goal · ${thisWeek.workouts} of ${goal} workouts`;
+  }
   if (unsupportedPeriod.test(request) || unsupportedTopic.test(request)
     || /\b(previous|past|this|last|next) \d+ (days?|weeks?|months?|years?)\b/.test(request)
-    || mentioned.some(({ key }) => !match?.key.includes(key))) return fallback;
+  ) return fallback;
 
   const intent = classifyLogQuestion(request);
   if (!intent) return fallback;
