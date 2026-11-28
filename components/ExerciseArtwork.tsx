@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { exerciseVisualUrl, getExerciseVisual, type ExerciseFrame } from '../exerciseVisuals';
+import { exerciseVisualUrl, getExerciseMotion, getExerciseVisual, type ExerciseFrame } from '../exerciseVisuals';
 
 interface ExerciseArtworkProps {
   name: string;
@@ -23,13 +23,14 @@ export default function ExerciseArtwork({ name, className = '', frame, alt = '' 
     );
   }
 
+  const studioFrame = frame && getExerciseMotion(visual.id) === 'blender';
   return (
     <img
       className={`exercise-art ${className}`}
       src={url}
       alt={alt}
-      width={frame ? visual.width : 176}
-      height={frame ? visual.height : 176}
+      width={studioFrame ? undefined : frame ? visual.width : 176}
+      height={studioFrame ? undefined : frame ? visual.height : 176}
       loading={frame ? 'eager' : 'lazy'}
       decoding="async"
       onError={() => setFailedUrl(url)}

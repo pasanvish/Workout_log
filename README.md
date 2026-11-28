@@ -103,7 +103,16 @@ Exercise data by [RepDB (repdb.co)](https://repdb.co), used in the app under the
 
 Exercise videos are sourced from Wikimedia Commons and the CC0 [Workout Free Videos collection](https://github.com/namnq/workout-free-videos/tree/v2.0.0). Each demo credits its creator and links to the original and license. Video mappings are in [exerciseDemos.ts](exerciseDemos.ts) and [exerciseStudioDemos.json](exerciseStudioDemos.json).
 
-Illustrated motion loops are rendered from the guide artwork using [Practical-RIFE](https://github.com/hzwer/Practical-RIFE) (MIT) and [FFmpeg](https://ffmpeg.org/). The [render script](scripts/render-exercise-motion.py) links to the ONNX model and can regenerate the loops listed in [exerciseMotion.json](exerciseMotion.json). Playback uses bundled MP4s and requires no model on the device.
+Use **With 3D animation** to find guides made with the shared Blender mannequin. The rig gives each joint a defined path and keeps equipment solid through the rep. Thumbnails, reference poses, and the animation for each of these guides come from the same rig.
+
+The [motion manifest](exerciseMotion.json) links each animation to its render source. The original illustrated loops use [Practical-RIFE](https://github.com/hzwer/Practical-RIFE) with the [ONNX render script](scripts/render-exercise-motion.py). The 3D loops use the realistic male mesh from [Blender Studio’s Human Base Meshes v1.4.1](https://www.blender.org/download/demo-files/) (CC0), the [exercise rig](scripts/blender/rig.py), and [authored poses](scripts/blender/poses.py). Both workflows encode their output with [FFmpeg](https://ffmpeg.org/). Playback uses bundled MP4s.
+
+To regenerate the 3D loops and artwork, extract `human_base_meshes_bundle.blend` from the [v1.4.1 archive](https://download.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip) and use Blender 4.5 LTS with FFmpeg and `cwebp` on your PATH. Pass `--stills` and exercise artwork IDs to review key positions before publishing a new clip.
+
+```bash
+blender --background --factory-startup --disable-autoexec --python-exit-code 1 \
+  --python scripts/blender/render.py -- --mesh /path/to/human_base_meshes_bundle.blend
+```
 
 - `npm run typecheck` checks TypeScript.
 - `npm run android:sync` builds the web interface and copies it into the Android project.

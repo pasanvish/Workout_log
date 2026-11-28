@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { exerciseMotionUrl, exerciseVisualUrl, getExerciseVisual, hasExerciseMotion, ILLUSTRATION_SOURCE, type ExerciseFrame } from '../exerciseVisuals';
+import { BLENDER_MESH_SOURCE, exerciseMotionUrl, exerciseVisualUrl, getExerciseMotion, getExerciseVisual, ILLUSTRATION_SOURCE, type ExerciseFrame } from '../exerciseVisuals';
 import ExerciseArtwork from './ExerciseArtwork';
 
 const labels: Record<ExerciseFrame, string> = {
@@ -40,21 +40,23 @@ export default function ExercisePositionViewer({ name }: { name: string }) {
 
   if (!visual) return null;
   const frame = visual.frames[active] ?? visual.frames[0];
-  const showAnimation = animation === 'open';
+  const motion = getExerciseMotion(visual.id);
+  const animationLabel = motion === 'blender' ? '3D exercise animation' : 'Illustrated animation';
+  const showAnimation = motion && animation === 'open';
 
   return (
     <section className="guide-summary space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">{showAnimation ? 'Illustrated animation' : 'Illustrated positions'}</h3>
+        <h3 className="font-semibold">{showAnimation ? animationLabel : 'Illustrated positions'}</h3>
         {!showAnimation && <span className="text-xs text-text-secondary">{labels[frame]}{count > 1 && ` · ${active + 1} of ${count}`}</span>}
       </div>
       <div className="grid min-h-32 place-items-center overflow-hidden rounded-lg bg-[#0c0e12]">
         {showAnimation ? <video ref={video} controls autoPlay muted playsInline loop
-          aria-label={`${name}, illustrated animation`}
+          aria-label={`${name}, ${animationLabel}`}
           className="exercise-art guide-art"
           width={visual.width} height={visual.height}
           poster={exerciseVisualUrl(visual.id, visual.frames[0])}
-          src={exerciseMotionUrl(visual.id)} onError={() => setAnimation('error')} /> : visual.frames.map((position, index) => (
+          src={exerciseMotionUrl(visual.id, motion)} onError={() => setAnimation('error')} /> : visual.frames.map((position, index) => (
           <ExerciseArtwork key={position} name={name} frame={position}
             alt={index === active ? `${name}, ${labels[position].toLowerCase()}` : ''}
             className={`guide-art [grid-area:1/1] transition-opacity duration-300 ${index === active ? 'opacity-100' : 'opacity-0'}`} />
@@ -69,14 +71,15 @@ export default function ExercisePositionViewer({ name }: { name: string }) {
             }}>{labels[position]}</button>
           ))}
         </div>
-        <button type="button" className="panel-action" onClick={() => setPlaying(value => !value)}>{playing ? 'Pause views' : 'Play views'}</button>
+        <button type="button" className="panel-action" onClick={() => setPlaying(value => !value)}>{playing ? 'Pause views' : 'Cycle poses'}</button>
       </div>}
-      {animation === 'error' && <p role="status" className="text-sm text-text-secondary">The animation couldn’t load. You can still play the illustrated positions.</p>}
-      {hasExerciseMotion(visual.id) && <button type="button" className="panel-action" onClick={() => {
+      {animation === 'error' && <p role="status" className="text-sm text-text-secondary">The animation couldn’t load. The reference artwork is available above.</p>}
+      {motion && <button type="button" className={`panel-action ${motion === 'blender' && !showAnimation ? 'panel-action-primary' : ''}`} onClick={() => {
         setPlaying(false);
         setAnimation(showAnimation ? 'closed' : 'open');
-      }}>{showAnimation ? 'Show positions' : 'Play animation'}</button>}
-      <p className="text-xs text-text-secondary">{visual.original ? 'Gym Logger illustration' :
+      }}>{showAnimation ? 'Show reference' : motion === 'blender' ? 'Play 3D animation' : 'Play animation'}</button>}
+      <p className="text-xs text-text-secondary">{motion === 'blender' ?
+        <a href={BLENDER_MESH_SOURCE} target="_blank" rel="noopener noreferrer" className="underline">Mannequin base mesh · Blender Studio · CC0</a> : visual.original ? 'Gym Logger illustration' :
         <a href={ILLUSTRATION_SOURCE} target="_blank" rel="noopener noreferrer" className="underline">Open Exercise Illustrations · CC0</a>}
       </p>
     </section>
