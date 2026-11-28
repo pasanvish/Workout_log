@@ -57,7 +57,7 @@ export function workoutRecap(model: ModelId, text: string, weekly: ReturnType<ty
   const fallback = model === 'lite' ? `You logged ${current} this week.` : `This week: ${current}. Last week: ${prior}.`;
   const description = text.trim().replace(/\s+/g, ' ')
     .replace(/^I /i, 'You ').replace(/^This week,? I /i, 'This week, you ');
-  const withLogged = (value: string) => value.replace(' and ', ' and (?:logged )?');
+  const withLogged = (value: string) => value.replace(/ (sets?)$/, ' (?:logged )?$1');
   const shape = model === 'lite'
     ? `^(?:This week,? you (?:logged|completed|recorded|did) ${withLogged(current)}|You (?:logged|completed|recorded|did) ${withLogged(current)} this week)[.!]?$`
     : `^This week: ${withLogged(current)}[.!] Last week: ${withLogged(prior)}[.!]`;
