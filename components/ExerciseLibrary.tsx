@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { MASTER_EXERCISE_LIST } from '../constants';
 import { getExerciseDetails } from '../exerciseDetails';
 import { getExerciseDemo } from '../exerciseDemos';
-import { getExerciseVisual } from '../exerciseVisuals';
+import { getExerciseVisual, hasExerciseMotion } from '../exerciseVisuals';
 import { exerciseEquipment } from '../exerciseCatalogue';
 import { muscleGroupFor } from '../muscleGroups';
 import { CustomExercise } from '../types';
@@ -26,7 +26,7 @@ type ExerciseLibraryMode =
 
 export default function ExerciseLibrary({ search, onSearch, onCreate, customExercises, selected, excluded, onToggle, onOpen }: ExerciseLibraryProps & ExerciseLibraryMode) {
   const [category, setCategory] = useState<string | null>(null);
-  const [media, setMedia] = useState<'all' | 'pictures' | 'videos'>('all');
+  const [media, setMedia] = useState<'all' | 'pictures' | 'videos' | 'animations'>('all');
   const [equipment, setEquipment] = useState('');
   const [limit, setLimit] = useState(PAGE_SIZE);
   const categories = useMemo(() => {
@@ -45,7 +45,13 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
   const matches = categories.flatMap(([label, names]) => {
     if (category && category !== label) return [];
     const available = [...names].filter(name => {
-      if (excluded?.has(name) || (media === 'videos' && !getExerciseDemo(name)) || (media === 'pictures' && !getExerciseVisual(name))) return false;
+      if (excluded?.has(name)) return false;
+      if (media === 'videos' && !getExerciseDemo(name)) return false;
+      if (media === 'pictures' && !getExerciseVisual(name)) return false;
+      if (media === 'animations') {
+        const visual = getExerciseVisual(name);
+        if (!visual || !hasExerciseMotion(visual.id)) return false;
+      }
       const details = getExerciseDetails(name);
       if (equipment && details.equipment !== equipment) return false;
       const { reference } = details;
@@ -91,6 +97,7 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
           <option value="all">All guides</option>
           <option value="pictures">With pictures</option>
           <option value="videos">With video</option>
+          <option value="animations">With animation</option>
         </select>}
       </div>
       {total > 0 && <p className="text-xs text-text-secondary" role="status">
@@ -114,6 +121,7 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
               const details = getExerciseDetails(name);
               const hasVideo = Boolean(onOpen && getExerciseDemo(name));
               const visual = onOpen && getExerciseVisual(name);
+              const hasAnimation = Boolean(visual && hasExerciseMotion(visual.id));
               return <button type="button" key={name} className={`picker-card ${picked ? 'is-selected' : ''}`}
                 aria-pressed={picked} aria-label={onOpen ? `Open ${name} guide` : undefined} onClick={() => (onOpen ?? onToggle)?.(name)}>
                 <ExerciseArtwork name={name} className="picker-art" />
@@ -121,7 +129,8 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="break-words text-sm font-semibold">{name}</span>
                     {hasVideo && <span className="history-chip text-brand-light">Video</span>}
-                    {!hasVideo && visual && <span className="history-chip">{visual.frames.length > 1 ? 'Poses' : 'Picture'}</span>}
+                    {hasAnimation && <span className="history-chip text-brand-light">Animation</span>}
+                    {!hasVideo && !hasAnimation && visual && <span className="history-chip">{visual.frames.length > 1 ? 'Poses' : 'Picture'}</span>}
                   </span>
                   <span className="mt-1 block text-xs leading-relaxed text-text-secondary">{details.description || details.equipment}</span>
                   <ExerciseMuscles name={name} compact />

@@ -1,4 +1,4 @@
-// Bump CACHE when the caching logic changes; app updates are picked up automatically.
+// Bump CACHE when existing responses need invalidating.
 const CACHE = 'gym-logger-v7';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon.svg'];
 
@@ -56,7 +56,7 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET' || !request.url.startsWith('http')) return;
 
   const url = new URL(request.url);
-  if (url.origin === self.location.origin && /\/exercise-demos\/[a-z0-9-]+\.mp4$/.test(url.pathname)) {
+  if (url.origin === self.location.origin && /\/exercise-(?:demos|motion)\/[a-z0-9-]+\.mp4$/.test(url.pathname)) {
     event.respondWith(exerciseVideo(request));
     return;
   }
