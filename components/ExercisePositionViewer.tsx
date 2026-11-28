@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { exerciseVisualUrl, getExerciseVisual, ILLUSTRATION_SOURCE, type ExerciseFrame } from '../exerciseVisuals';
+import React, { useEffect, useRef, useState } from 'react';
+import { exerciseMotionUrl, exerciseVisualUrl, getExerciseVisual, hasExerciseMotion, ILLUSTRATION_SOURCE, type ExerciseFrame } from '../exerciseVisuals';
 import ExerciseArtwork from './ExerciseArtwork';
 
 const labels: Record<ExerciseFrame, string> = {
@@ -12,58 +12,70 @@ const labels: Record<ExerciseFrame, string> = {
 
 export default function ExercisePositionViewer({ name }: { name: string }) {
   const visual = getExerciseVisual(name);
-  const [active, setActive] = useState(0);
+  const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [animation, setAnimation] = useState<'closed' | 'open' | 'error'>('closed');
+  const video = useRef<HTMLVideoElement>(null);
   const count = visual?.frames.length ?? 0;
+  const last = count - 1;
+  const active = step <= last ? step : 2 * last - step;
 
   useEffect(() => {
     if (!playing || count < 2) return;
-    const timer = window.setInterval(() => setActive(index => (index + 1) % count), 1200);
-    const pauseWhenHidden = () => { if (document.hidden) setPlaying(false); };
-    document.addEventListener('visibilitychange', pauseWhenHidden);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', pauseWhenHidden);
+    const timer = window.setInterval(() => setStep(index => (index + 1) % (2 * last)), 1200);
+    return () => window.clearInterval(timer);
+  }, [playing, count, last]);
+
+  useEffect(() => {
+    if (!playing && animation !== 'open') return;
+    const pauseWhenHidden = () => {
+      if (document.hidden) {
+        setPlaying(false);
+        video.current?.pause();
+      }
     };
-  }, [playing, count]);
+    document.addEventListener('visibilitychange', pauseWhenHidden);
+    return () => document.removeEventListener('visibilitychange', pauseWhenHidden);
+  }, [playing, animation]);
 
   if (!visual) return null;
   const frame = visual.frames[active] ?? visual.frames[0];
-  const imageLabel = frame === 'pose' ? labels[frame] : `${labels[frame]} position`;
-
-  function play() {
-    if (!visual) return;
-    if (playing) {
-      setPlaying(false);
-      return;
-    }
-    for (const position of visual.frames) {
-      const image = new Image();
-      image.src = exerciseVisualUrl(visual.id, position);
-    }
-    setPlaying(true);
-  }
+  const showAnimation = animation === 'open';
 
   return (
     <section className="guide-summary space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">Illustrated positions</h3>
-        <span className="text-xs text-text-secondary">{labels[frame]}{count > 1 && ` · ${active + 1} of ${count}`}</span>
+        <h3 className="font-semibold">{showAnimation ? 'Illustrated animation' : 'Illustrated positions'}</h3>
+        {!showAnimation && <span className="text-xs text-text-secondary">{labels[frame]}{count > 1 && ` · ${active + 1} of ${count}`}</span>}
       </div>
       <div className="grid min-h-32 place-items-center overflow-hidden rounded-lg bg-[#0c0e12]">
-        <ExerciseArtwork name={name} frame={frame} alt={`${name}, ${imageLabel.toLowerCase()}`} className="guide-art" />
+        {showAnimation ? <video ref={video} controls autoPlay muted playsInline loop
+          aria-label={`${name}, illustrated animation`}
+          className="exercise-art guide-art"
+          width={visual.width} height={visual.height}
+          poster={exerciseVisualUrl(visual.id, visual.frames[0])}
+          src={exerciseMotionUrl(visual.id)} onError={() => setAnimation('error')} /> : visual.frames.map((position, index) => (
+          <ExerciseArtwork key={position} name={name} frame={position}
+            alt={index === active ? `${name}, ${labels[position].toLowerCase()}` : ''}
+            className={`guide-art [grid-area:1/1] transition-opacity duration-300 ${index === active ? 'opacity-100' : 'opacity-0'}`} />
+        ))}
       </div>
-      {count > 1 && <div className="flex flex-wrap items-center justify-between gap-2">
+      {!showAnimation && count > 1 && <div className="flex flex-wrap items-center justify-between gap-2">
         <div role="group" aria-label="Illustrated exercise positions" className="flex flex-wrap gap-1.5">
           {visual.frames.map((position, index) => (
             <button type="button" className="category-chip" key={position} aria-pressed={active === index} onClick={() => {
               setPlaying(false);
-              setActive(index);
+              setStep(index);
             }}>{labels[position]}</button>
           ))}
         </div>
-        <button type="button" className="panel-action" onClick={play}>{playing ? 'Pause views' : 'Play views'}</button>
+        <button type="button" className="panel-action" onClick={() => setPlaying(value => !value)}>{playing ? 'Pause views' : 'Play views'}</button>
       </div>}
+      {animation === 'error' && <p role="status" className="text-sm text-text-secondary">The animation couldn’t load. You can still play the illustrated positions.</p>}
+      {hasExerciseMotion(visual.id) && <button type="button" className="panel-action" onClick={() => {
+        setPlaying(false);
+        setAnimation(showAnimation ? 'closed' : 'open');
+      }}>{showAnimation ? 'Show positions' : 'Play animation'}</button>}
       <p className="text-xs text-text-secondary">{visual.original ? 'Gym Logger illustration' :
         <a href={ILLUSTRATION_SOURCE} target="_blank" rel="noopener noreferrer" className="underline">Open Exercise Illustrations · CC0</a>}
       </p>

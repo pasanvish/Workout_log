@@ -93,7 +93,7 @@ This project is licensed under the MIT License.
 
 ### Interface and Android updates
 
-The web and Android apps share the React interface. The Exercises tab covers 265 built-in movements with form cues and realistic front and back muscle maps. Search by exercise, muscle, or equipment, and filter for pictures or videos. Every built-in movement has an illustration, including 163 with multiple positions. The library includes 43 demo videos. The Android app bundles the images and demos for offline playback. The website caches media after it loads.
+The web and Android apps share the React interface. The Exercises tab covers 265 built-in movements with form cues and realistic front and back muscle maps. Search by exercise, muscle, or equipment, and filter for pictures, animation, or videos. Every built-in movement has an illustration, including 163 with multiple positions that can be played in sequence. The library includes illustrated motion loops and 43 demo videos. The Android app bundles this media for offline playback. The website caches media after it loads.
 
 In **Workout → Weekly plan**, assign saved routines to any day of the week, leave rest days open, and start the scheduled routine directly. Each profile has its own plan, which is included in full backups.
 
@@ -102,6 +102,8 @@ The additional 204 entries use public-domain exercise names, equipment, muscle t
 Exercise data by [RepDB (repdb.co)](https://repdb.co), used in the app under the [RepDB Free Tier License](https://github.com/RepDB/exercise-dataset/blob/main/LICENSE-DATA.md). The movement illustrations use the CC0 [Open Exercise Illustrations collection](https://github.com/hitmanrepo/open-exercise-illustrations/tree/2786aefa4b36a08faeca8114e0d1eb0af3ef6732). The front and back anatomy and four exercise illustrations use [original ImageGen artwork](assets/exercise-visual-prompts.md). The remaining 95 illustrations were created using the [full coverage prompts](assets/exercise-coverage-prompts.md).
 
 Exercise videos are sourced from Wikimedia Commons and the CC0 [Workout Free Videos collection](https://github.com/namnq/workout-free-videos/tree/v2.0.0). Each demo credits its creator and links to the original and license. Video mappings are in [exerciseDemos.ts](exerciseDemos.ts) and [exerciseStudioDemos.json](exerciseStudioDemos.json).
+
+Illustrated motion loops are rendered from the guide artwork using [Practical-RIFE](https://github.com/hzwer/Practical-RIFE) (MIT) and [FFmpeg](https://ffmpeg.org/). The [render script](scripts/render-exercise-motion.py) links to the ONNX model and can regenerate the loops listed in [exerciseMotion.json](exerciseMotion.json). Playback uses bundled MP4s and requires no model on the device.
 
 - `npm run typecheck` checks TypeScript.
 - `npm run android:sync` builds the web interface and copies it into the Android project.
