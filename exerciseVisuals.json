@@ -1,0 +1,1528 @@
+{
+  "Bench Press (Barbell)": {
+    "id": "bench-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Incline Bench Press (Barbell)": {
+    "id": "incline-bench-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Decline Bench Press (Barbell)": {
+    "id": "decline-bench-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Dumbbell Press": {
+    "id": "dumbbell-chest-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Incline Dumbbell Press": {
+    "id": "incline-dumbbell-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Decline Dumbbell Press": {
+    "id": "dumbbell-decline-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Chest Fly (Dumbbell)": {
+    "id": "dumbbell-fly",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Incline Chest Fly (Dumbbell)": {
+    "id": "incline-dumbbell-fly",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Chest Press Machine": {
+    "id": "chest-press-machine",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Pec Deck Machine (Chest Fly)": {
+    "id": "pec-deck",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Cable Crossover": {
+    "id": "cable-crossover",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Push-ups": {
+    "id": "push-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Bent-Arm Dumbbell Pullover": {
+    "id": "dumbbell-pullover",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Cable Chest Press": {
+    "id": "standing-cable-chest-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Feet-Elevated Push-Up": {
+    "id": "decline-push-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Incline Push-Up": {
+    "id": "incline-push-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Leverage Incline Chest Press": {
+    "id": "plate-loaded-incline-chest-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Low Cable Crossover": {
+    "id": "cable-fly-low-to-high",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Medicine Ball Chest Pass": {
+    "id": "medicine-ball-chest-pass",
+    "frames": [
+      "start",
+      "mid",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Push-Up Wide": {
+    "id": "wide-push-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Smith Machine Bench Press": {
+    "id": "smith-machine-bench-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Smith Machine Incline Bench Press": {
+    "id": "smith-machine-incline-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Wide-Grip Barbell Bench Press": {
+    "id": "wide-grip-bench-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Deadlift": {
+    "id": "deadlift",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 930,
+    "height": 844
+  },
+  "Pull-ups": {
+    "id": "pull-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Chin-ups": {
+    "id": "chin-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Lat Pulldowns": {
+    "id": "lat-pulldown",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Bent Over Row (Barbell)": {
+    "id": "bent-over-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "T-Bar Rows": {
+    "id": "t-bar-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Seated Cable Rows": {
+    "id": "seated-cable-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Dumbbell Row (One Arm)": {
+    "id": "dumbbell-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 970,
+    "height": 808
+  },
+  "Good Mornings": {
+    "id": "good-morning",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Back Extension (Hyperextension)": {
+    "id": "back-extensions",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Face Pulls": {
+    "id": "face-pulls",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Barbell Shrug": {
+    "id": "shrugs",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Bent Over Two-Dumbbell Row": {
+    "id": "bent-over-two-dumbbell-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 620,
+    "height": 516,
+    "original": true
+  },
+  "Cable Shrugs": {
+    "id": "cable-shrug",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Close-Grip Front Lat Pulldown": {
+    "id": "close-grip-lat-pulldown",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Dumbbell Incline Row": {
+    "id": "chest-supported-dumbbell-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Dumbbell Shrug": {
+    "id": "dumbbell-shrug",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Leverage High Row": {
+    "id": "machine-high-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Lying T-Bar Row": {
+    "id": "chest-supported-t-bar-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Neutral-Grip Pull-Up": {
+    "id": "neutral-grip-pull-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Overhead Slam": {
+    "id": "medicine-ball-slam",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Rack Pulls": {
+    "id": "rack-pull",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Reverse Grip Bent-Over Rows": {
+    "id": "reverse-grip-barbell-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Straight-Arm Pulldown": {
+    "id": "straight-arm-pulldown",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 940,
+    "height": 836
+  },
+  "Underhand Cable Pulldowns": {
+    "id": "reverse-grip-lat-pulldown",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Barbell Squats": {
+    "id": "squat",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Leg Press": {
+    "id": "leg-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Lunges (Dumbbell)": {
+    "id": "dumbbell-lunge",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Leg Extension Machine": {
+    "id": "leg-extension",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Leg Curls Machine": {
+    "id": "leg-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Calf Raises": {
+    "id": "calf-raises",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Hip Thrust": {
+    "id": "hip-thrusts",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Abductor Machine": {
+    "id": "hip-abduction-machine",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Adductor Machine": {
+    "id": "hip-adduction-machine",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Goblet Squat": {
+    "id": "goblet-squat",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Ball Leg Curl": {
+    "id": "stability-ball-hamstring-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Band Glute Bridge": {
+    "id": "banded-glute-bridge",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Band Squat": {
+    "id": "band-squat",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Barbell Glute Bridge": {
+    "id": "barbell-glute-bridge",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Barbell Lunge": {
+    "id": "barbell-lunge",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Barbell Step Ups": {
+    "id": "barbell-step-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Bodyweight Squat": {
+    "id": "bodyweight-squat",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Cable Glute Kickback": {
+    "id": "cable-kickback",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Cable Pull-Through": {
+    "id": "cable-pull-through",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Dumbbell Rear Lunge": {
+    "id": "dumbbell-reverse-lunge",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Dumbbell Squat": {
+    "id": "dumbbell-squat",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Dumbbell Step Ups": {
+    "id": "dumbbell-step-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Flutter Kicks": {
+    "id": "flutter-kicks",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Freehand Jump Squat": {
+    "id": "jump-squat",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Front Squat (Clean Grip)": {
+    "id": "front-squat",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Glute Bridge": {
+    "id": "glute-bridge",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Glute Ham Raise": {
+    "id": "glute-ham-raise",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Glute Kickback": {
+    "id": "donkey-kicks",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Hack Squat": {
+    "id": "hack-squat",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Lateral Bound": {
+    "id": "skater-jump",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Leg Press Calf Raise": {
+    "id": "leg-press-calf-raise",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Lying Leg Curls": {
+    "id": "leg-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Natural Glute Ham Raise": {
+    "id": "nordic-hamstring-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "One-Arm Kettlebell Swings": {
+    "id": "one-arm-kettlebell-swing",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 887,
+    "height": 887,
+    "original": true
+  },
+  "Reverse Hyperextension": {
+    "id": "reverse-hyperextension",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Romanian Deadlift": {
+    "id": "romanian-deadlift",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 970,
+    "height": 808
+  },
+  "Seated Calf Raise": {
+    "id": "seated-calf-raise-machine",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Single Leg Glute Bridge": {
+    "id": "single-leg-glute-bridge",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Smith Machine Squat": {
+    "id": "smith-machine-squat",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Split Jump": {
+    "id": "jump-lunge",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Standing Dumbbell Calf Raise": {
+    "id": "dumbbell-calf-raise",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Standing Leg Curl": {
+    "id": "standing-leg-curl-machine",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Sumo Deadlift": {
+    "id": "sumo-deadlift",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Overhead Press (Barbell)": {
+    "id": "overhead-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Seated Dumbbell Press": {
+    "id": "dumbbell-shoulder-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Dumbbell Lateral Raise": {
+    "id": "lateral-raises",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Machine Lateral Raise": {
+    "id": "machine-lateral-raise",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Front Raise (Dumbbell)": {
+    "id": "front-raises",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Reverse Pec Deck": {
+    "id": "reverse-pec-deck",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Arnold Press": {
+    "id": "arnold-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Upright Row": {
+    "id": "upright-row",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Band Pull Apart": {
+    "id": "band-pull-apart",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Dumbbell One-Arm Shoulder Press": {
+    "id": "single-arm-overhead-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Dumbbell Scaption": {
+    "id": "dumbbell-scaption",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "External Rotation with Band": {
+    "id": "band-external-rotation",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "External Rotation with Cable": {
+    "id": "cable-external-rotation",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Front Cable Raise": {
+    "id": "cable-front-raise",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Kettlebell Turkish Get-Up (Lunge style)": {
+    "id": "turkish-get-up",
+    "frames": [
+      "start",
+      "mid",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Lateral Raise - With Bands": {
+    "id": "band-lateral-raise",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Machine Shoulder (Military) Press": {
+    "id": "shoulder-press-machine",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Reverse Flyes": {
+    "id": "rear-delt-fly",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Shoulder Press - With Bands": {
+    "id": "band-overhead-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Smith Machine Overhead Shoulder Press": {
+    "id": "smith-machine-overhead-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Barbell Curl": {
+    "id": "barbell-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Ez Bar Curls": {
+    "id": "ez-bar-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Dumbbell Curl": {
+    "id": "biceps-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Hammer Curl": {
+    "id": "hammer-curls",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Preacher Curls": {
+    "id": "preacher-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Incline Bench Dumbbell Curl": {
+    "id": "incline-dumbbell-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Cable Bicep Curls": {
+    "id": "cable-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Concentration Curl": {
+    "id": "concentration-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Cable Hammer Curls - Rope Attachment": {
+    "id": "rope-hammer-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Cross Body Hammer Curl": {
+    "id": "cross-body-hammer-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Machine Bicep Curl": {
+    "id": "machine-preacher-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "One Arm Dumbbell Preacher Curl": {
+    "id": "dumbbell-preacher-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Seated Dumbbell Curl": {
+    "id": "seated-dumbbell-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Spider Curl": {
+    "id": "spider-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Zottman Curl": {
+    "id": "zottman-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Triceps Dips": {
+    "id": "dips",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Close Grip Bench Press": {
+    "id": "close-grip-bench-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Skull Crushers (Ez Bar)": {
+    "id": "skull-crushers",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Cable Triceps Pushdown": {
+    "id": "tricep-pushdowns",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Overhead Triceps Extension (Dumbbell)": {
+    "id": "overhead-triceps-extension",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Tricep Kickbacks": {
+    "id": "dumbbell-kickback",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Bench Dips": {
+    "id": "bench-dip",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Cable Rope Overhead Triceps Extension": {
+    "id": "cable-overhead-triceps-extension",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 886,
+    "height": 886
+  },
+  "Close-Grip Push-Up": {
+    "id": "diamond-push-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Dip Machine": {
+    "id": "seated-dip-machine",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Dumbbell Floor Press": {
+    "id": "dumbbell-floor-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Floor Press": {
+    "id": "barbell-floor-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Lying Dumbbell Tricep Extension": {
+    "id": "dumbbell-skull-crusher",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Machine Triceps Extension": {
+    "id": "machine-triceps-extension",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Crunches": {
+    "id": "crunches",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Leg Raises": {
+    "id": "leg-raises",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Plank": {
+    "id": "plank",
+    "frames": [
+      "hold"
+    ],
+    "width": 1536,
+    "height": 1024
+  },
+  "Russian Twist": {
+    "id": "russian-twists",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Ab Crunches Machine": {
+    "id": "machine-abdominal-crunch",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Cable Crunches": {
+    "id": "cable-crunch",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Air Bike": {
+    "id": "bicycle-crunch",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Alternate Heel Touchers": {
+    "id": "heel-taps",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Cable Russian Twists": {
+    "id": "horizontal-cable-twist",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Cable Wood Chop": {
+    "id": "cable-woodchopper",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Dead Bug": {
+    "id": "dead-bug",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Decline Crunch": {
+    "id": "decline-crunch",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Dumbbell Side Bend": {
+    "id": "dumbbell-side-bend",
+    "frames": [
+      "hold"
+    ],
+    "width": 1536,
+    "height": 1024
+  },
+  "Exercise Ball Crunch": {
+    "id": "stability-ball-crunch",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Exercise Ball Pull-In": {
+    "id": "stability-ball-knee-tuck",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1024,
+    "height": 768
+  },
+  "Jackknife Sit-Up": {
+    "id": "v-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Oblique Crunch": {
+    "id": "oblique-crunch",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Pallof Press": {
+    "id": "pallof-press",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 990,
+    "height": 792
+  },
+  "Reverse Crunch": {
+    "id": "reverse-crunch",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Side Plank": {
+    "id": "side-plank",
+    "frames": [
+      "hold"
+    ],
+    "width": 1983,
+    "height": 793
+  },
+  "Sit-Up": {
+    "id": "sit-up",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 1536,
+    "height": 512
+  },
+  "Calf Stretch Hands Against Wall": {
+    "id": "wall-calf-stretch",
+    "frames": [
+      "hold"
+    ],
+    "width": 1536,
+    "height": 1024
+  },
+  "Child's Pose": {
+    "id": "childs-pose",
+    "frames": [
+      "hold"
+    ],
+    "width": 1536,
+    "height": 1024
+  },
+  "Hamstring Stretch": {
+    "id": "supine-hamstring-stretch",
+    "frames": [
+      "hold"
+    ],
+    "width": 620,
+    "height": 516,
+    "original": true
+  },
+  "Kneeling Forearm Stretch": {
+    "id": "kneeling-forearm-stretch",
+    "frames": [
+      "hold"
+    ],
+    "width": 620,
+    "height": 516,
+    "original": true
+  },
+  "Kneeling Hip Flexor Stretch": {
+    "id": "kneeling-hip-flexor-stretch",
+    "frames": [
+      "hold"
+    ],
+    "width": 1536,
+    "height": 1024
+  },
+  "Shoulder Stretch": {
+    "id": "cross-body-shoulder-stretch",
+    "frames": [
+      "hold"
+    ],
+    "width": 1536,
+    "height": 1024
+  },
+  "Triceps Stretch": {
+    "id": "overhead-triceps-stretch",
+    "frames": [
+      "hold"
+    ],
+    "width": 1536,
+    "height": 1024
+  },
+  "Palms-Down Dumbbell Wrist Curl Over A Bench": {
+    "id": "dumbbell-reverse-wrist-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  },
+  "Palms-Up Dumbbell Wrist Curl Over A Bench": {
+    "id": "dumbbell-wrist-curl",
+    "frames": [
+      "start",
+      "end"
+    ],
+    "width": 768,
+    "height": 1024
+  }
+}

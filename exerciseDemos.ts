@@ -1,3 +1,5 @@
+import studioDemos from './exerciseStudioDemos.json' with { type: 'json' };
+
 interface ExerciseDemo {
   file: string;
   author: string;
@@ -163,6 +165,15 @@ const DEMOS: Record<string, ExerciseDemo> = {
   }
 };
 
-export function getExerciseDemo(name: string) {
-  return Object.hasOwn(DEMOS, name) ? DEMOS[name] : undefined;
+const studio = studioDemos as Record<string, Pick<ExerciseDemo, 'file' | 'page'>>;
+
+export function getExerciseDemo(name: string): ExerciseDemo | undefined {
+  if (Object.hasOwn(DEMOS, name)) return DEMOS[name];
+  if (!Object.hasOwn(studio, name)) return;
+  return {
+    ...studio[name],
+    author: 'Workout Free Videos',
+    license: 'CC0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+  };
 }

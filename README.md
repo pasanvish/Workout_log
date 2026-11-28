@@ -93,15 +93,15 @@ This project is licensed under the MIT License.
 
 ### Interface and Android updates
 
-The web and Android apps share the React interface. The Exercises tab covers 265 built-in movements with form cues and front and back muscle maps. Search by exercise, muscle, or equipment. The original 61 entries have illustrations, and the signed Android app bundles 22 motion demos for offline playback. The website caches each demo after it first loads.
+The web and Android apps share the React interface. The Exercises tab covers 265 built-in movements with form cues and realistic front and back muscle maps. Search by exercise, muscle, or equipment, and filter for pictures or videos. There are 170 illustrated movements, including 160 with multiple positions, and 43 demo videos. The Android app bundles the images and demos for offline playback. The website caches media after it loads.
 
 In **Workout → Weekly plan**, assign saved routines to any day of the week, leave rest days open, and start the scheduled routine directly. Each profile has its own plan, which is included in full backups.
 
 The additional 204 entries use public-domain exercise names, equipment, muscle targets, and instructions from [Free Exercise DB](https://github.com/yuhonas/free-exercise-db/tree/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5).
 
-Exercise data by [RepDB (repdb.co)](https://repdb.co), used in the app under the [RepDB Free Tier License](https://github.com/RepDB/exercise-dataset/blob/main/LICENSE-DATA.md). Overhead press and triceps dip artwork by [Bryl Lim and Everkinetic](https://github.com/bryllim/workout-guide), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) and converted to WebP for this app.
+Exercise data by [RepDB (repdb.co)](https://repdb.co), used in the app under the [RepDB Free Tier License](https://github.com/RepDB/exercise-dataset/blob/main/LICENSE-DATA.md). The movement illustrations use the CC0 [Open Exercise Illustrations collection](https://github.com/hitmanrepo/open-exercise-illustrations/tree/2786aefa4b36a08faeca8114e0d1eb0af3ef6732). The front and back anatomy and four additional exercise illustrations use [original ImageGen artwork](assets/exercise-visual-prompts.md).
 
-Exercise videos and motion illustrations are sourced from Wikimedia Commons. Each demo credits its creator and links to the original file and license. The source and license for each edited MP4 are listed in [exerciseDemos.ts](exerciseDemos.ts).
+Exercise videos are sourced from Wikimedia Commons and the CC0 [Workout Free Videos collection](https://github.com/namnq/workout-free-videos/tree/v2.0.0). Each demo credits its creator and links to the original and license. Video mappings are in [exerciseDemos.ts](exerciseDemos.ts) and [exerciseStudioDemos.json](exerciseStudioDemos.json).
 
 - `npm run typecheck` checks TypeScript.
 - `npm run android:sync` builds the web interface and copies it into the Android project.

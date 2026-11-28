@@ -1,0 +1,86 @@
+{
+  "Dumbbell Lateral Raise": {
+    "file": "studio-dumbbell-lateral-raise",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/dumbbell-lateral-raise.mp4"
+  },
+  "Cable Rear Delt Fly": {
+    "file": "studio-bent-over-low-pulley-rear-delt-fly",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/bent-over-low-pulley-rear-delt-fly.mp4"
+  },
+  "Close Grip Bench Press": {
+    "file": "studio-close-grip-bench-press",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/close-grip-bench-press.mp4"
+  },
+  "Skull Crushers (Ez Bar)": {
+    "file": "studio-ez-bar-skullcrusher",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/ez-bar-skullcrusher.mp4"
+  },
+  "Incline Bench Dumbbell Curl": {
+    "file": "studio-incline-dumbbell-curl",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/incline-dumbbell-curl.mp4"
+  },
+  "Barbell Shrug": {
+    "file": "studio-barbell-shrug",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/barbell-shrug.mp4"
+  },
+  "Dumbbell Shrug": {
+    "file": "studio-dumbbell-shrug",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/dumbbell-shrug.mp4"
+  },
+  "Upright Row": {
+    "file": "studio-barbell-upright-row",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/barbell-upright-row.mp4"
+  },
+  "Seated Cable Rows": {
+    "file": "studio-seated-cable-row",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/seated-cable-row.mp4"
+  },
+  "Lying T-Bar Row": {
+    "file": "studio-machine-t-bar-row",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/machine-t-bar-row.mp4"
+  },
+  "Lat Pulldowns": {
+    "file": "studio-lat-pull-down",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/lat-pull-down.mp4"
+  },
+  "Straight-Arm Pulldown": {
+    "file": "studio-straight-arm-lat-pull-down",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/straight-arm-lat-pull-down.mp4"
+  },
+  "Sit-Up": {
+    "file": "studio-sit-up",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/sit-up.mp4"
+  },
+  "Hip Thrust": {
+    "file": "studio-barbell-hip-thrust",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/barbell-hip-thrust.mp4"
+  },
+  "Good Mornings": {
+    "file": "studio-good-mornings",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/good-mornings.mp4"
+  },
+  "Hack Squat": {
+    "file": "studio-machine-hack-squat",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/machine-hack-squat.mp4"
+  },
+  "Ball Leg Curl": {
+    "file": "studio-exercise-ball-leg-curl",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/exercise-ball-leg-curl.mp4"
+  },
+  "Natural Glute Ham Raise": {
+    "file": "studio-nordic-hamstring-curl",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/nordic-hamstring-curl.mp4"
+  },
+  "Seated Calf Raise": {
+    "file": "studio-seated-calf-raise",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/seated-calf-raise.mp4"
+  },
+  "Leg Press Calf Raise": {
+    "file": "studio-45-degree-leg-press-calf-raise",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/45-degree-leg-press-calf-raise.mp4"
+  },
+  "Adductor Machine": {
+    "file": "studio-hip-adduction-machine",
+    "page": "https://github.com/namnq/workout-free-videos/blob/v2.0.0/media/video/hip-adduction-machine.mp4"
+  }
+}

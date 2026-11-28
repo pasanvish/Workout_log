@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import ExerciseArtwork from './ExerciseArtwork';
+import ExercisePositionViewer from './ExercisePositionViewer';
 import ExerciseMuscles from './ExerciseMuscles';
 import ModalFrame from './ModalFrame';
 import { ExerciseTargetMap } from './BodyMuscleMap';
@@ -24,35 +24,13 @@ function instructionSections(text: string) {
   return sections;
 }
 
-function Positions({ name }: { name: string }) {
-  const { reference } = getExerciseDetails(name);
-  if (!reference?.frames.length) return null;
-  const multiple = reference.frames.length > 1;
-  return <>
-    <div className={`grid gap-2 ${multiple ? 'grid-cols-2' : 'grid-cols-1'}`}>
-      {reference.frames.map((frame, index) => (
-        <figure key={frame}>
-          <ExerciseArtwork name={name} frame={frame}
-            alt={`${name}, ${multiple ? `position ${index + 1}` : 'exercise position'}`} className="guide-art" />
-          {multiple && <figcaption className="mt-1 text-center text-xs text-text-secondary">Position {index + 1}</figcaption>}
-        </figure>
-      ))}
-    </div>
-    <p className="mt-2 text-xs text-text-secondary">
-      {reference.source === 'repdb'
-        ? <a href="https://repdb.co" target="_blank" rel="noopener noreferrer" className="underline">Exercise data by RepDB (repdb.co)</a>
-        : <>Artwork by <a href="https://bryllim.github.io/workout-guide/" target="_blank" rel="noopener noreferrer" className="underline">Bryl Lim and Everkinetic</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" className="underline">CC BY-SA 4.0</a></>}
-    </p>
-  </>;
-}
-
 function ExerciseGuide({ name, onClose }: { name: string; onClose: () => void }) {
   const [videoError, setVideoError] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   const details = getExerciseDetails(name);
   const demo = getExerciseDemo(name);
   const instructions = Object.hasOwn(EXERCISE_INSTRUCTIONS, name) ? EXERCISE_INSTRUCTIONS[name] : undefined;
   const quickSteps = Object.hasOwn(EXERCISE_QUICK_STEPS, name) ? EXERCISE_QUICK_STEPS[name] : details.catalogue?.steps ?? [];
-  const hasPositions = Boolean(details.reference?.frames.length);
   const sections = instructions ? instructionSections(instructions) : quickSteps.length ? [{ title: 'How to do it', steps: quickSteps }] : [];
 
   return (
@@ -60,29 +38,24 @@ function ExerciseGuide({ name, onClose }: { name: string; onClose: () => void })
       <button type="button" onClick={onClose} className="panel-action">Done</button>
     }>
       <div className="space-y-4">
-        {(demo || hasPositions) && <section className="guide-summary">
-          {demo && !videoError ? <>
-            <h3 className="mb-2 font-semibold">Watch the movement</h3>
-            <video controls playsInline loop muted preload="metadata"
+        <ExercisePositionViewer name={name} />
+        {demo && <section className="guide-summary">
+          <button type="button" className="panel-action" aria-expanded={showVideo} onClick={() => { setVideoError(false); setShowVideo(open => !open); }}>
+            {showVideo ? 'Hide demo video' : 'Watch demo video'}
+          </button>
+          {showVideo && <div className="mt-3">
+            {videoError ? <p role="status" className="text-sm text-text-secondary">
+              The video couldn’t load. <a href={demo.page} target="_blank" rel="noopener noreferrer" className="underline">Watch the source clip</a>.
+            </p> : <video controls playsInline loop muted preload="metadata"
               aria-label={`${name} demonstration`}
               className="mx-auto block aspect-video max-h-[42dvh] w-full rounded-xl bg-black object-contain"
-              src={`${import.meta.env.BASE_URL}exercise-demos/${demo.file}.mp4`} onError={() => setVideoError(true)} />
+              src={`${import.meta.env.BASE_URL}exercise-demos/${demo.file}.mp4`} onError={() => setVideoError(true)} />}
             <p className="mt-2 text-xs text-text-secondary">
               <a href={demo.page} target="_blank" rel="noopener noreferrer" className="underline">{demo.author}</a>
               {' · '}<a href={demo.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline">{demo.license}</a>
               {' · '}Edited for the app
             </p>
-            <details className="mt-3 rounded-lg border border-border-color/60 p-2.5">
-              <summary className="cursor-pointer text-xs font-semibold">Illustrated positions</summary>
-              <div className="mt-2"><Positions name={name} /></div>
-            </details>
-          </> : <>
-            <h3 className="mb-2 font-semibold">Illustrated positions</h3>
-            {videoError && <p role="status" className="mb-2 text-xs text-text-secondary">
-              The video couldn’t load. <a href={demo.page} target="_blank" rel="noopener noreferrer" className="underline">Watch the source clip</a>.
-            </p>}
-            <Positions name={name} />
-          </>}
+          </div>}
         </section>}
         <section className="tracking-panel">
           <h3 className="font-semibold">Target muscles</h3>
