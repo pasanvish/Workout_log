@@ -7,6 +7,7 @@ const labels: Record<ExerciseFrame, string> = {
   mid: 'Middle',
   end: 'Finish',
   hold: 'Hold',
+  pose: 'Reference pose',
 };
 
 export default function ExercisePositionViewer({ name }: { name: string }) {
@@ -28,6 +29,7 @@ export default function ExercisePositionViewer({ name }: { name: string }) {
 
   if (!visual) return null;
   const frame = visual.frames[active] ?? visual.frames[0];
+  const imageLabel = frame === 'pose' ? labels[frame] : `${labels[frame]} position`;
 
   function play() {
     if (!visual) return;
@@ -49,7 +51,7 @@ export default function ExercisePositionViewer({ name }: { name: string }) {
         <span className="text-xs text-text-secondary">{labels[frame]}{count > 1 && ` · ${active + 1} of ${count}`}</span>
       </div>
       <div className="grid min-h-32 place-items-center overflow-hidden rounded-lg bg-[#0c0e12]">
-        <ExerciseArtwork name={name} frame={frame} alt={`${name}, ${labels[frame].toLowerCase()} position`} className="guide-art" />
+        <ExerciseArtwork name={name} frame={frame} alt={`${name}, ${imageLabel.toLowerCase()}`} className="guide-art" />
       </div>
       {count > 1 && <div className="flex flex-wrap items-center justify-between gap-2">
         <div role="group" aria-label="Illustrated exercise positions" className="flex flex-wrap gap-1.5">
