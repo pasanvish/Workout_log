@@ -14,6 +14,8 @@ A sleek, modern, and offline-first web application to log your gym training sess
 
 - **Intuitive Workout Logging**: A step-by-step process to log your workout day, select exercises, and record sets with weight and reps.
 - **Detailed History**: View a chronological log of all your past workout sessions in beautifully designed cards.
+- **Exercise Guides**: Search by movement or muscle, watch bundled demos, and see front and back target maps.
+- **Muscle Analytics**: Explore working-set distribution, body-map intensity, and weekly trends by muscle group.
 - **Progress Visualization**: Track your strength gains with an interactive line chart that visualizes your max weight for any exercise over time.
 - **Responsive Design**: Fully optimized for both desktop and mobile devices, so you can log your workout right at the gym.
 - **Offline First**: All data is stored directly in your browser's `localStorage`. The app works entirely offline, and your data never leaves your device.
@@ -82,9 +84,11 @@ This project is licensed under the MIT License.
 
 ### Interface and Android updates
 
-The web and Android apps share the React interface. The 61 built-in exercise cards display bundled illustrations, short descriptions, and primary and secondary muscle targets. Exercise guides show multiple positions where available.
+The web and Android apps share the React interface. The Exercises tab covers all 61 built-in movements with form cues, illustrations, and front and back muscle maps. The signed Android app bundles 22 motion demos for offline playback. The website caches each demo after it first loads.
 
 Exercise data by [RepDB (repdb.co)](https://repdb.co), used in the app under the [RepDB Free Tier License](https://github.com/RepDB/exercise-dataset/blob/main/LICENSE-DATA.md). Overhead press and triceps dip artwork by [Bryl Lim and Everkinetic](https://github.com/bryllim/workout-guide), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) and converted to WebP for this app.
+
+Exercise videos and motion illustrations are sourced from Wikimedia Commons. Each demo credits its creator and links to the original file and license. The source and license for each edited MP4 are listed in [exerciseDemos.ts](exerciseDemos.ts).
 
 - `npm run typecheck` checks TypeScript.
 - `npm run android:sync` builds the web interface and copies it into the Android project.

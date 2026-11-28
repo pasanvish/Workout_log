@@ -11,6 +11,7 @@ import LogAssistant from './LogAssistant';
 import OfflineAi from './OfflineAi';
 import WorkoutCalendar from './WorkoutCalendar';
 import MuscleVolume from './MuscleVolume';
+import MuscleDashboard from './MuscleDashboard';
 import { hasNativeAi } from '../localAi';
 import { localDayKey, localLogDate } from '../training';
 import { supersetLabels } from '../workoutFlow';
@@ -62,7 +63,7 @@ const MedalIcon = () => (
   </svg>
 );
 
-const historyViews = ['Sessions', 'Progress', 'Records', 'Badges'] as const;
+const historyViews = ['Sessions', 'Progress', 'Muscles', 'Records', 'Badges'] as const;
 export type HistoryView = typeof historyViews[number];
 
 const shortDate = (date: string) => localLogDate(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
@@ -381,6 +382,10 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, customExercises, 
           <div className="space-y-4">
             <TrainingProgress logs={logs} />
             <MuscleVolume logs={logs} customExercises={customExercises} />
+            <button type="button" className="progress-link" onClick={() => onViewChange('Muscles')}>
+              <span className="min-w-0 flex-1"><strong className="block text-sm">View muscle distribution</strong><span className="block text-xs text-text-secondary">Body map and training volume by muscle group</span></span>
+              <span aria-hidden="true" className="text-brand-light">→</span>
+            </button>
             <LogAssistant logs={logs} records={personalRecords} goal={activeProfile?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL} />
             {hasNativeAi && <OfflineAi key={activeProfile?.id} active={isOpen} logs={logs} goal={activeProfile?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL} />}
             <section className="tracking-panel">
@@ -424,6 +429,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, customExercises, 
           </div>
         )}
 
+        {view === 'Muscles' && <MuscleDashboard logs={logs} customExercises={customExercises} />}
         {view === 'Records' && (
           <div className="space-y-5">
             <div>
