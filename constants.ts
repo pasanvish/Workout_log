@@ -1,5 +1,6 @@
+import { EXTRA_EXERCISES } from './exerciseCatalogue.ts';
 
-export const MASTER_EXERCISE_LIST: Record<string, string[]> = {
+const ORIGINAL_EXERCISES: Record<string, string[]> = {
   "Chest": [
     "Bench Press (Barbell)",
     "Incline Bench Press (Barbell)",
@@ -76,3 +77,9 @@ export const MASTER_EXERCISE_LIST: Record<string, string[]> = {
     "Cable Crunches"
   ]
 };
+
+// Preserve the original names used by saved workouts and routines.
+export const MASTER_EXERCISE_LIST = { ...ORIGINAL_EXERCISES };
+for (const { name, category } of EXTRA_EXERCISES) {
+  (MASTER_EXERCISE_LIST[category] ??= []).push(name);
+}

@@ -12,11 +12,12 @@ export const MUSCLE_COLORS: Record<string, string> = {
   Calves: '#9ebce9',
   Adductors: '#d7a98e',
   Legs: '#a5d589',
+  Neck: '#b9a8df',
 };
 
 const groups: Record<string, string> = {
   Chest: 'Chest', 'Upper chest': 'Chest', 'Serratus anterior': 'Chest',
-  Lats: 'Back', Rhomboids: 'Back', Traps: 'Back', 'Spinal erectors': 'Back',
+  Lats: 'Back', 'Mid back': 'Back', Rhomboids: 'Back', Traps: 'Back', 'Spinal erectors': 'Back',
   'Front delts': 'Shoulders', 'Side delts': 'Shoulders', 'Rear delts': 'Shoulders',
   Biceps: 'Biceps', Brachialis: 'Biceps', Triceps: 'Triceps',
   Brachioradialis: 'Forearms', 'Forearm flexors': 'Forearms',

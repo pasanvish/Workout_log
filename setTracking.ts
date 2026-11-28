@@ -1,3 +1,4 @@
+import { getCatalogueExercise } from './exerciseCatalogue.ts';
 import type { CustomExercise, Exercise, Set, SetType, TrackingMode } from './types';
 
 export const TRACKING_LABELS: Record<TrackingMode, string> = {
@@ -43,6 +44,8 @@ export function defaultTracking(name: string, customExercises: CustomExercise[])
   const custom = customExercises.find(exercise => exercise.name === name)?.tracking;
   if (isTrackingMode(custom)) return custom;
   if (name === 'Plank') return 'duration';
+  const catalogueMode = getCatalogueExercise(name)?.tracking;
+  if (catalogueMode) return catalogueMode;
   return bodyweightExercises.has(name) ? 'bodyweight' : 'weight';
 }
 

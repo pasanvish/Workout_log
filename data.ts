@@ -1,3 +1,4 @@
+import { cleanWeeklyPlan, type WeeklyPlan } from './weeklyPlan.ts';
 import { isRpe, isSetType, isTrackingMode, MAX_EXERCISE_NOTES, recordCandidate, trackingOf } from './setTracking.ts';
 import { clearUnpairedSupersets } from './workoutFlow.ts';
 import { cleanAppearance, REST_DURATIONS } from './profile.ts';
@@ -30,13 +31,14 @@ export interface Backup {
   exportedAt: string;
   profileName: string;
   profileAppearance?: ProfileAppearance;
+  weeklyPlan?: WeeklyPlan;
   workoutLogs: WorkoutLog[];
   customRoutines: CustomRoutine[];
   customExercises: CustomExercise[];
   bodyMeasurements: BodyMeasurementLog[];
 }
 
-type Parsed = Pick<Backup, 'workoutLogs' | 'customRoutines' | 'customExercises' | 'bodyMeasurements' | 'profileAppearance'>;
+type Parsed = Pick<Backup, 'workoutLogs' | 'customRoutines' | 'customExercises' | 'bodyMeasurements' | 'profileAppearance' | 'weeklyPlan'>;
 
 const arr = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
 const record = (value: unknown): Record<string, unknown> =>
@@ -112,6 +114,7 @@ export function parseBackup(data: unknown): Parsed | null {
   };
   const recognized = 'app' in obj && obj.app === 'gym-weight-logger' && 'version' in obj && (obj.version === 2 || obj.version === 3);
   if (recognized && 'profileAppearance' in obj) parsed.profileAppearance = cleanAppearance(obj.profileAppearance);
+  if (recognized && 'weeklyPlan' in obj) parsed.weeklyPlan = cleanWeeklyPlan(obj.weeklyPlan);
   const total = parsed.workoutLogs.length + parsed.customRoutines.length + parsed.customExercises.length + parsed.bodyMeasurements.length;
   const hasEmptyBackup = recognized && ['workoutLogs', 'customRoutines', 'customExercises', 'bodyMeasurements'].every(key =>
     Array.isArray(obj[key]) && obj[key].length === 0,

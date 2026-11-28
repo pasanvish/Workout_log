@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Exercise, WorkoutLog, CustomRoutine, CustomExercise, Profile } from '../types';
 import ExerciseArtwork from './ExerciseArtwork';
 import TrainingWelcome from './TrainingWelcome';
+import WeeklyPlanner from './WeeklyPlanner';
+import type { WeeklyPlan } from '../weeklyPlan';
 import ExerciseMuscles from './ExerciseMuscles';
 import { getExerciseDetails } from '../exerciseDetails';
 import ExerciseLogger from './ExerciseLogger';
@@ -26,6 +28,8 @@ interface WorkoutLoggerProps {
   draftKey: string;
   profile: Profile;
   onAchievements: () => void;
+  weeklyPlan: WeeklyPlan;
+  onSavePlan: (plan: WeeklyPlan) => void;
 }
 
 const PlusIcon = () => (
@@ -41,7 +45,7 @@ const InfoIcon = () => (
 );
 
 
-const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs, customExercises, onAddCustomExercise, draftKey, profile, onAchievements }) => {
+const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRoutine, logs, customExercises, onAddCustomExercise, draftKey, profile, onAchievements, weeklyPlan, onSavePlan }) => {
   const [draft] = useState<{ routine: CustomRoutine; exercises: Exercise[]; restEndsAt?: number } | null>(() => {
     try { return JSON.parse(localStorage.getItem(draftKey) || 'null'); } catch { return null; }
   });
@@ -197,6 +201,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
           ].map(([value, label]) => <div key={label} className="stat-card"><span className="text-2xl sm:text-3xl font-bold tracking-tight">{value}</span><span className="text-xs text-text-secondary mt-1">{label}</span></div>)}
         </div>
         
+        {!selectedRoutine && <WeeklyPlanner plan={weeklyPlan} routines={routines} onSave={onSavePlan} onStart={handleRoutineSelect} />}
         {!selectedRoutine && logs[0] && (
           <button type="button" onClick={() => repeatWorkout(logs[0])} className="progress-link">
             <span className="routine-symbol shrink-0" aria-hidden="true">↻</span>
@@ -244,6 +249,7 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
             <div className="space-y-4">
               <p className="text-xs text-text-secondary">Tap a set number to check off that set.</p>
               {exercises.map((exercise, exIndex) => {
+                const details = getExerciseDetails(exercise.name);
                 const group = exercise.superset ? groupLabels.get(exercise.superset) : undefined;
                 return (
                  <div key={`${exercise.name}-${exIndex}`} id={`session-exercise-${exIndex}`} tabIndex={-1}
@@ -251,10 +257,10 @@ const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({ onSave, routines, onAddRo
                     <div className="exercise-card-heading">
                         <div className="exercise-thumbnail"><ExerciseArtwork name={exercise.name} /></div>
                         <div className="min-w-0 flex-1">
-                          <p className="eyebrow mb-1">{getExerciseDetails(exercise.name).category}</p>
+                          <p className="eyebrow mb-1">{details.category}</p>
                           <h4 className="text-base font-semibold text-brand-light">{exercise.name}</h4>
                           {group && <span className="history-chip mt-1 inline-flex text-brand-light">{group}</span>}
-                          <p className="text-sm text-text-secondary mt-1 leading-relaxed">{getExerciseDetails(exercise.name).description}</p>
+                          <p className="text-sm text-text-secondary mt-1 leading-relaxed">{details.description || details.equipment}</p>
                           <div className="mt-2"><ExerciseMuscles name={exercise.name} /></div>
                           {lastTime[exercise.name] && (
                             <p className="text-xs text-text-secondary mt-0.5">

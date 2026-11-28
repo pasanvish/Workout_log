@@ -2,10 +2,15 @@ import React, { useMemo, useState } from 'react';
 import { MASTER_EXERCISE_LIST } from '../constants';
 import { getExerciseDetails } from '../exerciseDetails';
 import { getExerciseDemo } from '../exerciseDemos';
+import { exerciseEquipment } from '../exerciseCatalogue';
 import { muscleGroupFor } from '../muscleGroups';
 import { CustomExercise } from '../types';
 import ExerciseArtwork from './ExerciseArtwork';
 import ExerciseMuscles from './ExerciseMuscles';
+
+const PAGE_SIZE = 36;
+const equipmentOptions = [...new Set(Object.values(MASTER_EXERCISE_LIST).flat()
+  .flatMap(name => exerciseEquipment(name) ?? []))].sort();
 
 interface ExerciseLibraryProps {
   search: string;
@@ -21,6 +26,8 @@ type ExerciseLibraryMode =
 export default function ExerciseLibrary({ search, onSearch, onCreate, customExercises, selected, excluded, onToggle, onOpen }: ExerciseLibraryProps & ExerciseLibraryMode) {
   const [category, setCategory] = useState<string | null>(null);
   const [videosOnly, setVideosOnly] = useState(false);
+  const [equipment, setEquipment] = useState('');
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const categories = useMemo(() => {
     const list = new Map(Object.entries(MASTER_EXERCISE_LIST).map(([label, names]) => [label, new Set(names)]));
     const builtIn = new Set(Object.values(MASTER_EXERCISE_LIST).flat());
@@ -38,12 +45,22 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
     if (category && category !== label) return [];
     const available = [...names].filter(name => {
       if (excluded?.has(name) || (videosOnly && !getExerciseDemo(name))) return false;
-      const { reference } = getExerciseDetails(name);
+      const details = getExerciseDetails(name);
+      if (equipment && details.equipment !== equipment) return false;
+      const { reference } = details;
       const muscles = [...(reference?.primaryMuscles ?? []), ...(reference?.secondaryMuscles ?? [])];
-      const fields = [name, label, ...muscles, ...muscles.map(muscleGroupFor)].join(' ').toLowerCase();
+      const fields = [name, label, details.equipment, ...muscles, ...muscles.map(muscleGroupFor)].join(' ').toLowerCase();
       return words.every(word => fields.includes(word));
     });
     return available.length ? [{ label, available }] : [];
+  });
+
+  const total = matches.reduce((count, group) => count + group.available.length, 0);
+  let remaining = limit;
+  const visible = matches.flatMap(group => {
+    const available = group.available.slice(0, Math.max(0, remaining));
+    remaining -= available.length;
+    return available.length ? [{ ...group, available }] : [];
   });
 
   return (
@@ -51,22 +68,32 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
       <div className="flex items-end gap-2">
         <label className="min-w-0 flex-1 text-xs font-semibold text-text-secondary">
           Search exercises
-          <input type="search" value={search} onChange={event => onSearch(event.target.value)}
-            placeholder="Exercise or muscle" className="track-input mt-1.5 w-full" />
+          <input type="search" value={search} onChange={event => { onSearch(event.target.value); setLimit(PAGE_SIZE); }}
+            placeholder="Name, muscle or equipment" className="track-input mt-1.5 w-full" />
         </label>
-        <button type="button" className="panel-action shrink-0" onClick={() => { setVideosOnly(false); onCreate(); }}>Add custom</button>
+        <button type="button" className="panel-action shrink-0" onClick={() => { setVideosOnly(false); setEquipment(''); setCategory(null); onCreate(); }}>Add custom</button>
       </div>
       <div className="flex gap-1.5 overflow-x-auto px-1 pb-2 pt-1" role="group" aria-label="Filter exercises by category">
-        <button type="button" className="category-chip" aria-pressed={category === null} onClick={() => setCategory(null)}>All</button>
+        <button type="button" className="category-chip" aria-pressed={category === null} onClick={() => { setCategory(null); setLimit(PAGE_SIZE); }}>All</button>
         {categories.map(([label]) => (
-          <button type="button" key={label} className="category-chip" aria-pressed={category === label} onClick={() => setCategory(label)}>{label}</button>
+          <button type="button" key={label} className="category-chip" aria-pressed={category === label} onClick={() => { setCategory(label); setLimit(PAGE_SIZE); }}>{label}</button>
         ))}
       </div>
-      {onOpen && <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-text-secondary">
-        <input type="checkbox" className="size-4 accent-brand-light" checked={videosOnly}
-          onChange={event => setVideosOnly(event.target.checked)} />
-        With video
-      </label>}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <select aria-label="Equipment" className="track-input min-w-0 max-w-full" value={equipment}
+          onChange={event => { setEquipment(event.target.value); setLimit(PAGE_SIZE); }}>
+          <option value="">All equipment</option>
+          {equipmentOptions.map(label => <option key={label} value={label}>{label}</option>)}
+        </select>
+        {onOpen && <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-text-secondary">
+          <input type="checkbox" className="size-4 accent-brand-light" checked={videosOnly}
+            onChange={event => { setVideosOnly(event.target.checked); setLimit(PAGE_SIZE); }} />
+          With video
+        </label>}
+      </div>
+      {total > 0 && <p className="text-xs text-text-secondary" role="status">
+        {total > limit ? `Showing ${limit} of ${total} exercises` : `${total} ${total === 1 ? 'exercise' : 'exercises'}`}
+      </p>}
       {Boolean(selected?.size) && (
         <div className="flex flex-wrap gap-1.5 rounded-xl border border-border-color/60 bg-background-dark p-2.5" aria-label="Selected exercises">
           {[...selected].map(name => (
@@ -76,12 +103,13 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
           ))}
         </div>
       )}
-      {matches.map(({ label, available }) => (
+      {visible.map(({ label, available }) => (
         <section key={label}>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-secondary">{label}</h3>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {available.map(name => {
               const picked = selected?.has(name);
+              const details = getExerciseDetails(name);
               const hasVideo = Boolean(onOpen && getExerciseDemo(name));
               return <button type="button" key={name} className={`picker-card ${picked ? 'is-selected' : ''}`}
                 aria-pressed={picked} aria-label={onOpen ? `Open ${name} guide` : undefined} onClick={() => (onOpen ?? onToggle)?.(name)}>
@@ -91,7 +119,7 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
                     <span className="break-words text-sm font-semibold">{name}</span>
                     {hasVideo && <span className="history-chip text-brand-light">Video</span>}
                   </span>
-                  <span className="mt-1 block text-xs leading-relaxed text-text-secondary">{getExerciseDetails(name).description}</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-text-secondary">{details.description || details.equipment}</span>
                   <ExerciseMuscles name={name} compact />
                 </span>
                 <span aria-hidden="true" className="picker-indicator">{onOpen ? '›' : picked ? '✓' : '+'}</span>
@@ -100,6 +128,9 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
           </div>
         </section>
       ))}
+      {total > limit && <button type="button" className="panel-action w-full" onClick={() => setLimit(count => count + PAGE_SIZE)}>
+        Show more exercises
+      </button>}
       {matches.length === 0 && (
         <p className="rounded-xl bg-background-dark p-4 text-sm text-text-secondary">No exercises match these filters.</p>
       )}

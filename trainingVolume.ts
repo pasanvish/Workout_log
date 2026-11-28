@@ -12,16 +12,18 @@ interface MuscleWork {
 }
 
 export function muscleWork(logs: WorkoutLog[], customExercises: CustomExercise[]): MuscleWork[] {
-  const customs = new Map(customExercises.map(({ name, category }) => [name, muscleGroupFor(category)]));
+  const customs = new Map(customExercises.map(({ name, category }) => [name, category]));
   return logs.flatMap(log => {
     const date = localLogDate(log.date).getTime();
     if (!Number.isFinite(date)) return [];
     return log.exercises.flatMap(exercise => {
+      const details = getExerciseDetails(exercise.name);
+      const customCategory = customs.get(exercise.name);
+      if (details.category === 'Mobility' || (!details.reference && customCategory === 'Mobility')) return [];
       const mode = trackingOf(exercise);
       const sets = exercise.sets.filter(set => set.setType !== 'warmup' && isCompleteSet(set, mode)).length;
       if (!sets) return [];
-      const details = getExerciseDetails(exercise.name);
-      const targets = details.reference?.primaryMuscles.map(muscleGroupFor) ?? [customs.get(exercise.name) ?? 'Uncategorized'];
+      const targets = details.reference?.primaryMuscles.map(muscleGroupFor) ?? [customCategory ? muscleGroupFor(customCategory) : 'Uncategorized'];
       const groups = [...new Set(targets)];
       return [{ date, exercise: exercise.name, groups: groups.length ? groups : ['Uncategorized'], sets }];
     });
