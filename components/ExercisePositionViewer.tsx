@@ -41,7 +41,9 @@ export default function ExercisePositionViewer({ name }: { name: string }) {
   if (!visual) return null;
   const frame = visual.frames[active] ?? visual.frames[0];
   const motion = getExerciseMotion(visual.id);
-  const animationLabel = motion === 'blender' ? '3D exercise animation' : 'Illustrated animation';
+  const hold = visual.frames.includes('hold');
+  const stillHold = visual.id === 'plank' || visual.id === 'side-plank';
+  const animationLabel = hold ? '3D hold setup' : motion === 'blender' ? '3D exercise animation' : 'Illustrated animation';
   const showAnimation = motion && animation === 'open';
 
   return (
@@ -74,10 +76,10 @@ export default function ExercisePositionViewer({ name }: { name: string }) {
         <button type="button" className="panel-action" onClick={() => setPlaying(value => !value)}>{playing ? 'Pause views' : 'Cycle poses'}</button>
       </div>}
       {animation === 'error' && <p role="status" className="text-sm text-text-secondary">The animation couldn’t load. The reference artwork is available above.</p>}
-      {motion && <button type="button" className={`panel-action ${motion === 'blender' && !showAnimation ? 'panel-action-primary' : ''}`} onClick={() => {
+      {motion && !stillHold && <button type="button" className={`panel-action ${motion === 'blender' && !showAnimation ? 'panel-action-primary' : ''}`} onClick={() => {
         setPlaying(false);
         setAnimation(showAnimation ? 'closed' : 'open');
-      }}>{showAnimation ? 'Show reference' : motion === 'blender' ? 'Play 3D animation' : 'Play animation'}</button>}
+      }}>{showAnimation ? 'Show reference' : hold ? 'Play hold setup' : motion === 'blender' ? 'Play 3D animation' : 'Play animation'}</button>}
       <p className="text-xs text-text-secondary">{motion === 'blender' ?
         <a href={BLENDER_MESH_SOURCE} target="_blank" rel="noopener noreferrer" className="underline">Mannequin base mesh · Blender Studio · CC0</a> : visual.original ? 'Gym Logger illustration' :
         <a href={ILLUSTRATION_SOURCE} target="_blank" rel="noopener noreferrer" className="underline">Open Exercise Illustrations · CC0</a>}

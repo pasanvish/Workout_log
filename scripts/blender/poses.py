@@ -48,7 +48,7 @@ def curl(rig, stage, name):
         palms = []
         for side in SIDES:
             shoulder = rig.point(joint("shoulder", side))
-            elbow = shoulder + Vector((side * 0.027, -0.012, -0.254))
+            elbow = shoulder + Vector((side * (0.083 if seated else 0.027), -0.012, -0.254))
             angle = math.radians(12 + 120 * t)
             direction = Vector((side * 0.012, -math.sin(angle), -math.cos(angle)))
             wrist = elbow + 0.248 * direction
@@ -109,7 +109,9 @@ def squat(rig, stage, name):
     return pose
 
 
-@motion("bench-press", "incline-bench-press", "dumbbell-chest-press", "incline-dumbbell-press",
+@motion("incline-bench-press", "incline-dumbbell-press", view="bench",
+        center=(0, .25, .82), scale=2.12)
+@motion("bench-press", "dumbbell-chest-press",
         "close-grip-bench-press", "wide-grip-bench-press",
         "original-close-grip-dumbbell-press", "original-dumbbell-bench-press-with-neutral-grip",
         "original-one-arm-dumbbell-bench-press", "dumbbell-floor-press", "barbell-floor-press",
@@ -314,6 +316,8 @@ def dumbbell_raise(rig, stage, name):
             anterior = math.sqrt(1 - lateral * lateral)
             direction = Vector((side * lateral * reach, -anterior * reach, -rise))
             wrist = rig.point(joint("shoulder", side)) + 0.489 * direction
+            if seated:
+                wrist.x += side * .064 * (1 - t)
             axis = Vector((1, 0, 0)) if forward else Vector((0, 1, 0))
             axis = (axis - direction * axis.dot(direction)).normalized()
             _, palm = rig.arm(side, wrist, FRONT, direction, axis * -side)
@@ -454,14 +458,15 @@ def dead_bug(rig, stage, name):
         view="side", center=(0, 0, 0.42), scale=1.76)
 def crunch(rig, stage, name):
     full = name == "sit-up"
+    partial = name == "original-partial-sit-up"
     tuck = name == "original-tuck-crunch"
 
     def pose(t):
-        rig.start(hip=(0, 0, 0.128), pitch=-90 + (67 if full else 9) * t, chest_pitch=26 * t, look=7 + t * 7)
+        pitch = -74 + 59 * t if partial else -90 + (67 if full else 9) * t
+        rig.start(hip=(0, 0, 0.128), pitch=pitch, chest_pitch=(21 if partial else 26) * t, look=7 + t * 7)
         for side in SIDES:
             ankle = (0.137 * side, -0.55 + 0.16 * t if tuck else -0.46, 0.21 + 0.15 * t if tuck else 0.073)
             rig.leg(side, ankle, foot=around("X", -37) if tuck else ID, pole=UP)
-            shoulder = rig.point(joint("shoulder", side))
             neck = rig.current["head"].translation
             wrist = neck + rig.chest @ Vector((0.075 * side, -0.020, 0.043))
             rig.arm(side, wrist, (side, -0.15, 0.75), rig.chest @ UP, rig.chest @ Vector((-side, 0, 0)))
@@ -516,12 +521,18 @@ def seated_legs(rig, stage, name):
     box("Machine stand", (0, 0.043, base / 2), (0.12, 0.38, base), stage.frame)
     lever = cylinder("Resistance lever", 0.36, 0.020, stage.frame)
     roller = cylinder("Ankle roller", 0.46 if not unilateral else 0.20, 0.049, stage.rubber)
+    handles = [cylinder("Support grip", .14, .018, stage.rubber) for _ in SIDES]
+    for side in SIDES:
+        box("Grip support", (side * (.229 if lying else .252), -.645 if lying else .001,
+                            .283 if lying else .273),
+            (.035, .047, .437 if lying else .417), stage.frame)
+    rig.set_grip(.83)
 
     def pose(t):
         rig.start(hip=(0, 0.02 if lying else 0.083, 0.678 if lying else 0.601),
                   pitch=91 if lying else -5, look=-15 if lying else 0)
         anchors = []
-        for side in SIDES:
+        for side, handle in zip(SIDES, handles):
             start = rig.point(joint("hip", side))
             thigh = (joint("hip", side) - joint("knee", side)).length
             shin = (joint("knee", side) - joint("ankle", side)).length
@@ -535,18 +546,16 @@ def seated_legs(rig, stage, name):
             if not unilateral or side == 1:
                 anchors.append((knee, end - direction * 0.045))
             if lying:
-                target = Vector((side * 0.18, -0.63, 0.59))
+                target = Vector((side * 0.229, -0.63, 0.59))
             else:
-                target = Vector((side * 0.234, 0.016, 0.57))
-            rig.arm(side, target, Vector((side, 0.9, -0.03)), FRONT, (-side, 0, 0))
+                target = Vector((side * 0.252, 0.016, 0.57))
+            _, palm = rig.arm(side, target, Vector((side, 0.9, -0.03)), FRONT, UP)
+            place(handle, palm, UP)
         knee = sum((pair[0] for pair in anchors), Vector()) / len(anchors)
         center = sum((pair[1] for pair in anchors), Vector()) / len(anchors)
-        if lying:
-            center.z += 0.045 * (1 - t)
-            center.y += 0.048 * t
-        else:
-            center.y -= 0.041 * (1 - t)
-            center.z += 0.050 * t
+        angle = math.radians((2 + 94 * t) if lying else (-9 + 99 * t))
+        normal = Vector((0, -math.sin(angle), math.cos(angle))) if lying else Vector((0, -math.cos(angle), math.sin(angle)))
+        center += .102 * normal
         lever_x = 0.264
         a = Vector((lever_x, knee.y, knee.z))
         b = Vector((lever_x, center.y, center.z))
@@ -563,9 +572,9 @@ def cable_station(stage, pulley_y, seated):
     box("Overhead crossbar", (side_x / 2, pulley_y, top), (side_x + 0.19, 0.085, 0.092), stage.frame)
     cable = cylinder("Tensioned cable", 1, 0.005, stage.steel)
     if seated:
-        box("Pulldown seat", (0, 0.04, 0.46), (0.42, 0.45, 0.078), stage.pad)
+        box("Pulldown seat", (0, 0.04, 0.432), (0.42, 0.45, 0.078), stage.pad)
         box("Seat support", (0, 0.04, 0.22), (0.13, 0.13, 0.44), stage.frame)
-        box("Thigh restraint", (0, -0.235, 0.63), (0.44, 0.13, 0.093), stage.pad)
+        box("Thigh restraint", (0, -0.235, 0.676), (0.44, 0.13, 0.093), stage.pad)
 
     def update(handle):
         anchor = Vector((0, pulley_y, top - 0.042))
@@ -649,7 +658,7 @@ def dip(rig, stage, name):
     return pose
 
 
-@motion("dumbbell-row", view="side", center=(0, 0, 0.78), scale=1.86)
+@motion("dumbbell-row", view="side", center=(0, 0, 0.78), scale=2.06)
 def supported_row(rig, stage, name):
     load = stage.dumbbells(0.058, sides=(1,))
     rig.set_grip(1, side=1)
@@ -658,7 +667,12 @@ def supported_row(rig, stage, name):
     def pose(t):
         rig.start(hip=(0.14, 0.36, 0.708), pitch=82, look=-19)
         rig.leg(1, (0.411, 0.46, 0.073))
-        rig.leg(-1, (-0.045, 0.78, 0.525), pole=FRONT)
+        hip = rig.point(joint("hip", -1))
+        thigh = (joint("knee", -1) - joint("hip", -1)).length
+        shin = (joint("ankle", -1) - joint("knee", -1)).length
+        knee = hip + Vector((-.049, .364, -.158)).normalized() * thigh
+        heel = knee + Vector((.015, .385, .052)).normalized() * shin
+        rig.leg_pose(-1, knee, heel, around("X", 66))
         rig.arm(-1, (-0.085, -0.104, 0.50), (-0.5, 1, 0.42), FRONT, (1, 0, 0))
         shoulder = rig.point(joint("shoulder", 1))
         wrist = shoulder + Vector((0.045, 0.025 + 0.183 * t, -0.485 + 0.31 * t))
@@ -683,16 +697,22 @@ def sled_press(rig, stage, name):
         place(track, (side * 0.375, -0.36, 0.68), rail)
         box("Guide support", (side * 0.375, -0.72, 0.54), (0.054, 0.056, 1.08), stage.frame)
     load = [cylinder("Sled plate", 0.061, 0.092, stage.rubber) for _ in SIDES]
+    handles = [cylinder("Side grip", .137, .017, stage.rubber) for _ in SIDES]
+    for side in SIDES:
+        box("Seat rail", (side * .29, .21, .036), (.20, .43, .072), stage.frame)
+        box("Grip support", (side * .262, .14, .246), (.035, .047, .390), stage.frame)
+    rig.set_grip(.90)
 
     def pose(t):
         rig.start(hip=(0, 0.145, 0.557), pitch=-48, look=6)
         turn = -131 - (22 * t if calf else 0)
         foot = around("X", turn)
         heel = Vector((0, -0.590, 0.829)) - rail * (0 if calf else 0.273 * t)
-        for side in SIDES:
+        for side, handle in zip(SIDES, handles):
             ankle = heel + Vector((side * 0.17, 0, 0))
             rig.leg(side, ankle, foot=foot, pole=UP)
-            rig.arm(side, (side * 0.211, 0.156, 0.522), (0.24 * side, 1, 0), FRONT, (-side, 0, 0))
+            _, palm = rig.arm(side, (side * 0.262, 0.156, 0.522), (0.24 * side, 1, 0), FRONT, UP)
+            place(handle, palm, UP)
         contact = foot @ Vector((0, -0.096 if calf else -0.048, -0.071))
         plate.location = heel + contact + rail * 0.028
         plate.rotation_euler.x = math.radians(48)
@@ -709,7 +729,7 @@ def hip_machine(rig, stage, name):
     back.rotation_euler.x = math.radians(-5)
     box("Machine base", (0, -0.085, 0.033), (0.94, 1.08, 0.066), stage.frame)
     box("Seat support", (0, 0.114, 0.21), (0.25, 0.23, 0.42), stage.frame)
-    pads = [box("Thigh pad", (0, 0, 0), (0.083, 0.16, 0.168), stage.pad) for _ in SIDES]
+    pads = [box("Thigh pad", (0, 0, 0), (0.083 if abduct else .048, 0.16, 0.168), stage.pad) for _ in SIDES]
     rests = [box("Foot support", (0, 0, 0), (0.13, 0.21, 0.049), stage.frame) for _ in SIDES]
     hinges = [cylinder("Pivot arm", 1, 0.018, stage.steel) for _ in SIDES]
     posts = [cylinder("Pad support", 1, 0.019, stage.steel) for _ in SIDES]
@@ -727,7 +747,9 @@ def hip_machine(rig, stage, name):
             rig.leg_pose(side, knee, heel, foot)
             rig.arm(side, (side * 0.243, 0.059, 0.505), (0.55 * side, 1, 0.22), FRONT, (-side, 0, 0))
             normal = Vector((side * math.cos(angle), math.sin(angle), 0))
-            pad.location = knee - 0.067 * lateral + (0.064 if abduct else -0.064) * normal
+            pad.location = knee - 0.067 * lateral + (0.11 if abduct else -0.132) * normal
+            if not abduct:
+                pad.location.x = side * max(.028, side * pad.location.x)
             pad.rotation_euler.z = math.degrees(angle) * side
             rest.location = heel + foot @ Vector((0, -0.033, -0.09))
             rest.rotation_euler.z = math.degrees(angle) * side

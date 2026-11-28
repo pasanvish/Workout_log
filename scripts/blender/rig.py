@@ -4,7 +4,7 @@ import math
 
 import bmesh
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 
 SIDES = (-1, 1)
@@ -33,7 +33,11 @@ def joint(name, side):
 def hand_frame(side, fingers, thumb):
     fingers = Vector(fingers).normalized()
     thumb = Vector(thumb)
-    thumb = (thumb - fingers * fingers.dot(thumb)).normalized()
+    thumb -= fingers * fingers.dot(thumb)
+    if thumb.length < 0.001:
+        guide = UP if abs(fingers.z) < 0.85 else FRONT
+        thumb = guide - fingers * fingers.dot(guide)
+    thumb.normalize()
     outer = side * thumb.cross(fingers)
     return Matrix((thumb, fingers, outer)).transposed()
 
@@ -91,17 +95,25 @@ def color(name, rgb):
     return material
 
 
-def ik(start, target, first, second, pole):
+def ik(start, target, first, second, pole, previous=None):
     """Solve a two-bone chain without stretching and return its bend and endpoint."""
     delta = target - start
-    direction = delta.normalized()
+    direction = delta.normalized() if delta.length > 0.001 else FRONT
     distance = max(abs(first - second) + 0.001, min(delta.length, first + second - 0.002))
     bend_direction = pole - direction * pole.dot(direction)
     if bend_direction.length < 1e-5:
         bend_direction = direction.cross(UP if abs(direction.z) < 0.8 else FRONT)
+    bend_direction.normalize()
+    if previous is not None:
+        previous = previous - direction * previous.dot(direction)
+        if previous.length > .001:
+            previous.normalize()
+            angle = math.atan2(direction.dot(previous.cross(bend_direction)), previous.dot(bend_direction))
+            # Close to full extension the pole becomes ambiguous. Carry its bend plane forward.
+            bend_direction = Quaternion(direction, max(-.20, min(.20, angle))) @ previous
     along = (first * first - second * second + distance * distance) / (2 * distance)
     height = math.sqrt(max(0, first * first - along * along))
-    return start + direction * along + bend_direction.normalized() * height, start + direction * distance
+    return start + direction * along + bend_direction * height, start + direction * distance, bend_direction
 
 
 def build_body(library):
@@ -199,7 +211,12 @@ class Rig:
         self.armature = armature
         self.grips = grips
         self.rest = {bone.name: bone.matrix_local.copy() for bone in armature.data.bones}
+        self.reset_motion()
+
+    def reset_motion(self):
         self.current = {}
+        self.bend_planes = {}
+        self.rotations = {}
 
     def set_grip(self, amount, side=None):
         for hand in SIDES if side is None else (side,):
@@ -216,12 +233,13 @@ class Rig:
             world = self.rest[parent] @ self.current[parent].inverted() @ world
         pose.matrix_basis = rest.inverted() @ world
 
-    def start(self, hip=REST_HIP, pitch=0, yaw=0, tilt=0, look=0, chest_pitch=0):
+    def start(self, hip=REST_HIP, pitch=0, yaw=0, tilt=0, look=0, chest_pitch=0, chest_yaw=0, chest_tilt=0, roll=0):
         self.hip = Vector(hip)
-        self.torso = around("Z", yaw) @ around("Y", tilt) @ around("X", pitch)
+        self.shoulder_offsets = dict.fromkeys(SIDES, 0)
+        self.torso = around("Z", yaw) @ around("Y", tilt) @ around("X", pitch) @ around("Z", roll)
         self.bone("spine", self.hip, self.torso)
         self.chest_start = self.hip + self.torso @ (REST_CHEST - REST_HIP)
-        self.chest = self.torso @ around("X", chest_pitch)
+        self.chest = self.torso @ around("Z", chest_yaw) @ around("Y", chest_tilt) @ around("X", chest_pitch)
         self.bone("chest", self.chest_start, self.chest)
         neck = self.rest["head"].translation
         self.bone("head", self.point(neck), self.chest @ around("X", look))
@@ -233,8 +251,18 @@ class Rig:
 
     def aim(self, name, start, end, basis=ID):
         rest_direction = self.rest[name].to_3x3().col[1]
-        turn = (basis @ rest_direction).rotation_difference(end - start).to_matrix()
+        target = (end - start).normalized()
+        turn = (basis @ rest_direction).rotation_difference(target).to_matrix()
         rotation = turn @ basis
+        previous = self.rotations.get(name)
+        if previous is not None:
+            transported = (previous @ rest_direction).rotation_difference(target).to_matrix() @ previous
+            guide = self.rest[name].to_3x3().col[0]
+            old = transported @ guide
+            new = rotation @ guide
+            change = math.atan2(target.dot(old.cross(new)), old.dot(new))
+            rotation = Quaternion(target, max(-.23, min(.23, change))).to_matrix() @ transported
+        self.rotations[name] = rotation
         self.bone(name, start, rotation)
         return rotation
 
@@ -242,7 +270,9 @@ class Rig:
         hip, knee, heel = [joint(name, side) for name in ("hip", "knee", "ankle")]
         ankle = Vector(ankle) if ankle is not None else heel
         start = self.point(hip)
-        bend, end = ik(start, ankle, (knee - hip).length, (heel - knee).length, Vector(pole))
+        key = f"leg.{side}"
+        bend, end, self.bend_planes[key] = ik(start, ankle, (knee - hip).length, (heel - knee).length,
+                                             Vector(pole), self.bend_planes.get(key))
         self.leg_pose(side, bend, end, foot)
         return end
 
@@ -252,10 +282,34 @@ class Rig:
         self.aim(f"shin.{side}", bend, end, thigh)
         self.bone(f"foot.{side}", end, foot)
 
+    def straight_leg(self, side, target, foot):
+        rest_hip, rest_knee, rest_ankle = (joint(name, side) for name in ("hip", "knee", "ankle"))
+        start = self.point(rest_hip)
+        direction = (Vector(target) - start).normalized()
+        bend = start + (rest_knee - rest_hip).length * direction
+        end = bend + (rest_ankle - rest_knee).length * direction
+        self.leg_pose(side, bend, end, foot)
+
+    def raise_shoulder(self, side, height):
+        self.shoulder_offsets[side] = height
+
     def arm(self, side, wrist, pole, direction=None, across=None):
         shoulder, elbow, hand = [joint(name, side) for name in ("shoulder", "elbow", "wrist")]
+        start = self.point(shoulder) + self.chest @ (UP * self.shoulder_offsets[side])
+        key = f"arm.{side}"
+        bend, end, self.bend_planes[key] = ik(start, Vector(wrist), (elbow - shoulder).length, (hand - elbow).length,
+                                             Vector(pole), self.bend_planes.get(key))
+        return self.arm_pose(side, bend, end, direction, across)
+
+    def elbow_hinge(self, side, elbow_target, direction, across):
+        shoulder, elbow, wrist = (joint(name, side) for name in ("shoulder", "elbow", "wrist"))
         start = self.point(shoulder)
-        bend, end = ik(start, Vector(wrist), (elbow - shoulder).length, (hand - elbow).length, Vector(pole))
+        bend = start + (elbow - shoulder).length * (Vector(elbow_target) - start).normalized()
+        end = bend + (wrist - elbow).length * Vector(direction).normalized()
+        return self.arm_pose(side, bend, end, direction, across)
+
+    def arm_pose(self, side, bend, end, direction=None, across=None):
+        start = self.point(joint("shoulder", side)) + self.chest @ (UP * self.shoulder_offsets[side])
         upper = self.aim(f"upper.{side}", start, bend, self.chest)
         forearm = self.aim(f"lower.{side}", bend, end, upper)
         if direction is not None and across is not None:
@@ -265,7 +319,17 @@ class Rig:
         else:
             natural = self.rest[f"hand.{side}"].to_3x3().col[1]
             rotation = (forearm @ natural).rotation_difference(Vector(direction)).to_matrix() @ forearm
-        self.bone(f"hand.{side}", end, rotation)
+        name = f"hand.{side}"
+        previous = self.rotations.get(name)
+        if previous is not None:
+            current_quat = rotation.to_quaternion()
+            prior_quat = previous.to_quaternion()
+            angle = current_quat.rotation_difference(prior_quat).angle
+            angle = min(angle, 2 * math.pi - angle)
+            if angle > .33:
+                rotation = prior_quat.slerp(current_quat, .33 / angle).to_matrix()
+        self.rotations[name] = rotation
+        self.bone(name, end, rotation)
         inner = -0.023 * self.grips[side].value * rest_hand_frame(side).col[2]
-        palm = end + rotation @ (joint("palm", side) - hand + inner)
+        palm = end + rotation @ (joint("palm", side) - joint("wrist", side) + inner)
         return end, palm

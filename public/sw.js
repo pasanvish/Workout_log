@@ -1,5 +1,5 @@
 // Bump CACHE when existing responses need invalidating.
-const CACHE = 'gym-logger-v7';
+const CACHE = 'gym-logger-v8';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon.svg'];
 
 self.addEventListener('install', event => {
