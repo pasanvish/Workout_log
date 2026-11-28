@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { exerciseSwaps } from '../exerciseSwaps';
 import type { CustomExercise, Exercise } from '../types';
 import ModalFrame from './ModalFrame';
+import ExerciseArtwork from './ExerciseArtwork';
 
 interface Props {
   exercise: Exercise;
@@ -42,6 +43,7 @@ export default function ExerciseSwapModal({ exercise, exercises, customExercises
           <div className="grid gap-2">
             {visible.map(item => <button type="button" key={item.name} aria-pressed={item.name === selected}
               className={`picker-card ${item.name === selected ? 'is-selected' : ''}`} onClick={() => setSelected(item.name)}>
+              <ExerciseArtwork name={item.name} className="size-12 shrink-0 rounded-lg" />
               <span className="min-w-0 flex-1">
                 <strong className="block text-sm">{item.name}</strong>
                 <span className="block text-xs text-text-secondary">{[item.equipment, ...item.matches].filter(Boolean).join(' · ')}</span>

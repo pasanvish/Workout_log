@@ -32,10 +32,10 @@
   .exercise-art { @apply block w-full aspect-square h-auto object-contain rounded-xl bg-background-dark; }
   .exercise-art-placeholder { @apply grid place-items-center text-brand-light bg-brand-primary/10; }
   .hero-art { @apply w-24 sm:w-32 shrink-0; }
-  .guide-art { @apply mx-auto max-w-[260px]; }
+  .guide-art { @apply mx-auto aspect-auto max-h-[48dvh] bg-transparent; }
   .empty-session { @apply text-center p-8 sm:p-12 rounded-2xl border border-dashed border-border-color bg-background-light/50; }
   .picker-card { @apply flex items-center gap-3 text-left p-3 rounded-xl border border-border-color bg-background-dark transition-colors hover:border-brand-primary; }
-  .picker-art { @apply w-16 sm:w-[72px] shrink-0 rounded-lg; }
+  .picker-art { @apply w-[72px] sm:w-20 shrink-0 rounded-lg bg-[#0c0e12]; }
   .guide-summary { @apply rounded-2xl border border-border-color bg-background-dark p-4; }
 }
 @media (max-width: 380px) {

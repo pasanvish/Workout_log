@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-const width = 144;
-const height = 272;
-const body = 'M72 4 C60 4 55 14 56 24 C56 34 61 41 64 43 L63 51 C58 55 47 55 40 60 C33 65 31 76 29 89 L23 115 C18 127 16 140 14 151 L9 163 C8 167 9 174 12 177 L16 173 L19 162 L23 164 L28 153 L35 126 L43 103 C47 114 48 128 46 141 C43 154 45 170 48 184 L51 206 C50 217 53 232 56 245 L56 257 L51 263 Q50 269 61 269 L66 267 L68 247 L72 194 L76 247 L78 267 L83 269 Q94 269 93 263 L88 257 L88 245 C91 232 94 217 93 206 L96 184 C99 170 101 154 98 141 C96 128 97 114 101 103 L109 126 L116 153 L121 164 L125 162 L128 173 L132 177 C135 174 136 167 135 163 L130 151 C128 140 126 127 121 115 L115 89 C113 76 111 65 104 60 C97 55 86 55 81 51 L80 43 C83 41 88 34 88 24 C89 14 84 4 72 4 Z';
+const width = 510;
+const height = 1160;
+const top = 28;
+const photoUrl = `${import.meta.env.BASE_URL}anatomy/athlete-front-back.webp`;
 
 interface Region {
   group: string;
@@ -11,89 +12,122 @@ interface Region {
   single?: boolean;
 }
 
-const shoulderFront: Region = { group: 'Shoulders', muscles: ['Front delts', 'Side delts', 'Shoulders'], path: 'M42 64 Q48 60 55 62 Q53 69 44 74 L39 88 Q34 86 35 80 Q36 69 42 64 Z' };
-const shoulderBack: Region = { group: 'Shoulders', muscles: ['Rear delts', 'Side delts', 'Shoulders'], path: 'M40 64 Q48 60 55 64 Q49 71 46 80 L38 89 Q33 86 35 78 Q37 69 40 64 Z' };
-const forearms: Region = { group: 'Forearms', muscles: ['Brachioradialis', 'Forearm flexors', 'Forearms'], path: 'M29 116 Q34 119 35 123 L25 149 L20 154 Q20 139 24 129 Z' };
-
 const front: Region[] = [
-  shoulderFront,
-  { group: 'Chest', muscles: ['Chest', 'Upper chest'], path: 'M56 65 Q63 60 69 63 L70 79 Q63 88 50 86 L45 81 Q48 70 56 65 Z' },
-  { group: 'Chest', muscles: ['Serratus anterior'], path: 'M48 89 Q52 91 55 89 L57 110 L51 115 Q48 101 48 89 Z' },
-  { group: 'Biceps', muscles: ['Biceps', 'Brachialis'], path: 'M37 90 Q41 86 43 90 Q42 102 35 113 Q29 115 30 108 Z' },
-  forearms,
-  { group: 'Core', muscles: ['Abs', 'Deep abs'], path: 'M59 89 Q65 87 70 86 L70 130 Q65 133 60 127 Q57 105 59 89 Z' },
-  { group: 'Core', muscles: ['Obliques', 'Hip flexors'], path: 'M54 114 L60 130 Q65 135 70 135 L69 146 Q59 142 50 135 Z' },
-  { group: 'Quads', muscles: ['Quads'], path: 'M49 138 Q58 145 64 149 Q66 163 61 185 L56 201 Q52 197 51 185 Q44 157 49 138 Z' },
-  { group: 'Adductors', muscles: ['Hip adductors'], path: 'M65 150 Q69 149 70 154 Q70 178 61 193 L63 183 Z' },
-  { group: 'Calves', muscles: ['Gastrocnemius', 'Soleus', 'Calves'], path: 'M54 208 Q59 206 60 214 Q61 224 60 236 L57 242 Q54 234 54 224 Z' },
+  { group: 'Neck', muscles: ['Neck'], path: 'M283 174 Q300 190 318 187 Q339 186 358 173 L360 199 Q345 217 318 223 Q291 218 280 203 Z', single: true },
+  { group: 'Shoulders', muscles: ['Front delts', 'Side delts', 'Shoulders'], path: 'M213 235 Q193 231 177 253 Q154 276 156 309 Q156 321 162 330 Q187 326 205 310 Q210 289 226 265 Q232 249 213 235 Z' },
+  { group: 'Chest', muscles: ['Chest', 'Upper chest'], path: 'M241 250 Q275 237 308 246 Q315 266 313 299 Q307 334 284 345 Q249 356 220 334 Q205 318 211 296 Q220 273 241 250 Z' },
+  { group: 'Chest', muscles: ['Serratus anterior'], path: 'M213 338 Q224 352 243 357 L247 388 Q235 411 230 431 Q225 403 214 378 Q208 359 213 338 Z' },
+  { group: 'Biceps', muscles: ['Biceps', 'Brachialis'], path: 'M165 329 Q185 331 201 316 Q212 331 205 361 Q196 396 171 417 Q155 428 144 414 Q144 378 165 329 Z' },
+  { group: 'Forearms', muscles: ['Forearm flexors', 'Brachioradialis', 'Forearms'], path: 'M146 420 Q163 431 176 420 Q177 451 155 488 L120 557 L103 581 Q100 542 111 505 Q116 464 146 420 Z' },
+  { group: 'Core', muscles: ['Abs', 'Deep abs'], path: 'M254 357 Q275 350 292 343 L314 329 L315 508 Q286 524 261 510 Q245 471 248 441 Q252 416 246 391 Z' },
+  { group: 'Core', muscles: ['Obliques', 'Hip flexors'], path: 'M231 402 Q240 414 245 445 Q248 479 260 512 Q237 518 225 509 Q230 479 228 454 Q224 432 231 402 Z' },
+  { group: 'Quads', muscles: ['Quads'], path: 'M203 665 Q236 679 283 668 Q301 688 291 724 Q281 752 273 792 Q265 828 245 838 Q219 829 210 800 Q199 767 200 739 Q194 696 203 665 Z' },
+  { group: 'Adductors', muscles: ['Hip adductors'], path: 'M283 654 L305 645 Q302 683 295 719 Q290 746 278 768 Q286 733 286 695 Z' },
+  { group: 'Calves', muscles: ['Calves', 'Gastrocnemius', 'Soleus'], path: 'M216 852 Q230 863 250 850 Q264 875 262 910 Q260 946 239 998 L222 1042 Q215 1016 210 989 Q201 949 195 923 Q187 886 216 852 Z' },
 ];
 
 const back: Region[] = [
-  shoulderBack,
-  { group: 'Neck', muscles: ['Neck'], path: 'M65 42 Q72 46 79 42 L80 50 L72 56 L64 50 Z', single: true },
-  { group: 'Back', muscles: ['Traps', 'Rhomboids', 'Mid back'], path: 'M72 50 L84 58 L97 64 L85 73 L72 96 L59 73 L47 64 L60 58 Z', single: true },
-  { group: 'Back', muscles: ['Lats', 'Rhomboids', 'Mid back'], path: 'M47 82 Q57 78 62 92 L68 105 L68 118 Q59 113 52 103 Z' },
-  { group: 'Back', muscles: ['Spinal erectors'], path: 'M67 101 L70 101 L70 133 L62 138 Q60 122 67 101 Z' },
-  { group: 'Triceps', muscles: ['Triceps'], path: 'M36 90 Q42 86 44 92 Q42 105 35 114 L30 112 Q30 103 36 90 Z' },
-  forearms,
-  { group: 'Glutes', muscles: ['Glute max', 'Glute medius', 'Hip abductors', 'Glutes'], path: 'M50 133 Q57 129 67 138 Q72 147 67 158 Q60 167 49 160 Q46 148 50 133 Z' },
-  { group: 'Hamstrings', muscles: ['Hamstrings'], path: 'M49 163 Q57 168 67 164 Q66 182 60 194 L57 202 Q52 197 51 185 Z' },
-  { group: 'Adductors', muscles: ['Hip adductors'], path: 'M68 161 L70 161 Q70 183 63 199 L62 193 Q68 182 68 161 Z' },
-  { group: 'Calves', muscles: ['Gastrocnemius', 'Soleus', 'Calves'], path: 'M54 207 Q57 203 62 207 Q67 214 63 227 L58 244 L55 241 Q55 228 53 219 Z' },
+  { group: 'Neck', muscles: ['Neck'], path: 'M895 153 Q930 165 969 151 L971 185 Q959 206 934 212 Q909 206 893 189 Z', single: true },
+  { group: 'Back', muscles: ['Traps', 'Mid back'], path: 'M930 190 Q909 197 887 208 L826 236 Q851 239 873 257 Q905 274 918 309 L934 340 L953 305 Q965 269 995 256 Q1018 240 1040 236 L981 204 Q958 190 934 190 Z', single: true },
+  { group: 'Shoulders', muscles: ['Rear delts', 'Side delts', 'Shoulders'], path: 'M825 236 Q801 234 785 256 Q767 283 770 317 Q777 329 793 323 Q815 312 830 300 Q841 280 851 257 Q839 243 825 236 Z' },
+  { group: 'Back', muscles: ['Rhomboids', 'Mid back'], path: 'M850 267 Q879 270 904 305 L928 351 L918 376 Q887 361 864 338 Q850 317 842 300 Z' },
+  { group: 'Back', muscles: ['Lats'], path: 'M832 310 Q849 332 873 341 Q900 368 923 381 Q920 415 893 439 Q871 450 845 476 Q846 443 839 410 Q832 378 826 353 Q824 328 832 310 Z' },
+  { group: 'Back', muscles: ['Spinal erectors'], path: 'M915 365 Q928 383 928 414 L926 496 Q907 498 888 500 L904 466 Q915 430 915 401 Z' },
+  { group: 'Triceps', muscles: ['Triceps'], path: 'M779 323 Q795 330 815 310 Q824 335 815 372 Q807 402 787 428 Q769 439 753 418 Q759 365 779 323 Z' },
+  { group: 'Forearms', muscles: ['Forearm extensor', 'Forearm extensors', 'Brachioradialis', 'Forearm flexors', 'Forearms'], path: 'M753 423 Q767 443 786 430 Q781 463 757 501 L722 567 Q714 581 710 570 Q713 534 720 497 Q729 447 753 423 Z' },
+  { group: 'Glutes', muscles: ['Glute max', 'Glute medius', 'Hip abductors', 'Glutes'], path: 'M850 504 Q880 500 913 502 L931 520 L930 604 Q919 626 881 640 Q845 645 817 625 Q819 577 828 548 Q835 520 850 504 Z' },
+  { group: 'Hamstrings', muscles: ['Hamstrings'], path: 'M821 642 Q861 657 913 637 Q917 668 907 704 Q902 750 879 800 Q867 822 839 834 Q825 804 821 780 Q813 743 811 704 Q812 670 821 642 Z' },
+  { group: 'Adductors', muscles: ['Hip adductors'], path: 'M911 637 Q922 637 927 628 Q923 680 912 721 Q905 751 889 771 Q898 739 903 704 Z' },
+  { group: 'Calves', muscles: ['Calves', 'Gastrocnemius', 'Soleus'], path: 'M831 842 Q851 848 877 841 Q883 883 876 923 Q866 966 845 1015 L819 1037 Q810 1010 804 978 Q794 927 800 892 Q809 855 831 842 Z' },
 ];
 
-function BodySide({ label, regions, color }: { label: string; regions: Region[]; color: (region: Region) => string | undefined }) {
+const views = [
+  { label: 'Front', left: 62, center: 317, regions: front },
+  { label: 'Back', left: 678, center: 933, regions: back },
+] as const;
+
+type ColorRegion = (region: Region) => string | undefined;
+
+function BodySide({ view, photo, color, expanded }: {
+  view: typeof views[number]; photo?: HTMLImageElement; color: ColorRegion; expanded: boolean;
+}) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const ctx = canvas.current?.getContext('2d');
-    if (!ctx) return;
-    ctx.setTransform(2, 0, 0, 2, 0, 0);
+    if (!ctx || !photo) return;
     ctx.clearRect(0, 0, width, height);
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = 0.9;
-    ctx.fillStyle = '#202d38';
-    ctx.strokeStyle = '#4b6171';
-    const outline = new Path2D(body);
-    ctx.fill(outline);
-    ctx.stroke(outline);
-
-    for (const region of regions) {
+    ctx.drawImage(photo, view.left, top, width, height, 0, 0, width, height);
+    ctx.save();
+    ctx.translate(-view.left, -top);
+    const paint = (path: Path2D, highlight: string) => {
+      ctx.fillStyle = highlight;
+      ctx.globalCompositeOperation = 'color';
+      ctx.globalAlpha = 0.92;
+      ctx.fill(path);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.38;
+      ctx.fill(path);
+      ctx.globalAlpha = 0.71;
+      ctx.strokeStyle = highlight;
+      ctx.lineWidth = 2;
+      ctx.stroke(path);
+    };
+    for (const region of view.regions) {
+      const highlight = color(region);
+      if (!highlight) continue;
       const shape = new Path2D(region.path);
-      ctx.fillStyle = color(region) ?? '#314451';
-      ctx.strokeStyle = '#16232b';
-      ctx.fill(shape);
-      ctx.stroke(shape);
+      paint(shape, highlight);
       if (region.single) continue;
       ctx.save();
-      ctx.translate(width, 0);
+      ctx.translate(view.center * 2, 0);
       ctx.scale(-1, 1);
-      ctx.fill(shape);
-      ctx.stroke(shape);
+      paint(shape, highlight);
       ctx.restore();
     }
-  }, [color, regions]);
+    ctx.restore();
+  }, [view, color, photo]);
 
   return <figure className="min-w-0 text-center">
-    <canvas ref={canvas} width={width * 2} height={height * 2} aria-hidden="true" className="mx-auto block w-full max-w-[8rem]" />
-    <figcaption className="mt-1 text-xs font-semibold text-text-secondary">{label}</figcaption>
+    <canvas ref={canvas} width={width} height={height} aria-hidden="true"
+      className={`mx-auto block w-full rounded-xl bg-[#111b23] ${expanded ? 'max-w-[15rem]' : 'max-w-[11rem]'}`} />
+    <figcaption className="mt-1 text-xs font-semibold text-text-secondary">{view.label}</figcaption>
   </figure>;
 }
 
-export function BodyMuscleMap({ color, label }: { color: (region: Region) => string | undefined; label: string }) {
-  return <div role="group" aria-label={label} className="mx-auto grid max-w-[19rem] grid-cols-2 gap-4">
-    <BodySide label="Front" regions={front} color={color} />
-    <BodySide label="Back" regions={back} color={color} />
+export function BodyMuscleMap({ color, label }: { color: ColorRegion; label: string }) {
+  const [photo, setPhoto] = useState<HTMLImageElement>();
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [zoom, setZoom] = useState<(typeof views)[number]['label']>();
+  useEffect(() => {
+    const image = new Image();
+    image.onload = () => setPhoto(image);
+    image.onerror = () => setLoadFailed(true);
+    image.src = photoUrl;
+    return () => { image.onload = null; image.onerror = null; };
+  }, []);
+
+  if (loadFailed) return <p className="text-center text-xs text-text-secondary">Muscle image unavailable.</p>;
+  const visible = zoom ? views.filter(view => view.label === zoom) : views;
+  return <div role="group" aria-label={label} className="mx-auto max-w-[24rem]">
+    <div className={`grid gap-2 ${zoom ? 'grid-cols-1' : 'grid-cols-2'}`}>
+      {visible.map(view => <BodySide key={view.label} view={view} photo={photo} color={color} expanded={Boolean(zoom)} />)}
+    </div>
+    <div role="group" aria-label="Muscle map view" className="mt-3 flex flex-wrap justify-center gap-1.5">
+      <button type="button" className="category-chip" aria-pressed={!zoom} onClick={() => setZoom(undefined)}>Both</button>
+      {views.map(({ label }) => <button type="button" className="category-chip" key={label}
+        aria-pressed={zoom === label} onClick={() => setZoom(label)}>{label}</button>)}
+    </div>
   </div>;
 }
 
 export function ExerciseTargetMap({ primary, secondary }: { primary: readonly string[]; secondary: readonly string[] }) {
   return (
-    <div className="rounded-xl border border-border-color/70 bg-background-dark py-3">
+    <div className="rounded-xl border border-border-color/70 bg-background-dark p-3">
       <BodyMuscleMap label="Front and back exercise target map" color={({ muscles }) => {
         if (muscles.some(muscle => primary.includes(muscle))) return '#80eacf';
         if (muscles.some(muscle => secondary.includes(muscle))) return '#efb078';
       }} />
-      <div className="mt-3 flex justify-center gap-4 text-xs text-text-secondary">
+      <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-text-secondary">
         <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#80eacf]" /> Primary</span>
         {secondary.length > 0 && <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#efb078]" /> Secondary</span>}
       </div>
