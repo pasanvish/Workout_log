@@ -77,7 +77,8 @@ def main():
     parser.add_argument("ids", nargs="*", help="Artwork IDs to preview, or omit to use exerciseMotion.json")
     args = parser.parse_args()
     visuals = {item["id"]: item for item in json.loads((ROOT / "exerciseVisuals.json").read_text()).values()}
-    slugs = args.ids or json.loads((ROOT / "exerciseMotion.json").read_text())
+    manifest = json.loads((ROOT / "exerciseMotion.json").read_text())
+    slugs = args.ids or [slug for slug, source in manifest.items() if source == "interpolated"]
     for slug in slugs:
         if slug not in visuals or len(visuals[slug]["frames"]) < 2:
             parser.error(f"{slug} must have at least two illustrated poses")
