@@ -26,7 +26,7 @@ type ExerciseLibraryMode =
 
 export default function ExerciseLibrary({ search, onSearch, onCreate, customExercises, selected, excluded, onToggle, onOpen }: ExerciseLibraryProps & ExerciseLibraryMode) {
   const [category, setCategory] = useState<string | null>(null);
-  const [media, setMedia] = useState<'all' | 'pictures' | 'videos' | 'animations' | 'blender'>('all');
+  const [media, setMedia] = useState<'all' | 'pictures' | 'videos' | 'blender'>('all');
   const [equipment, setEquipment] = useState('');
   const [limit, setLimit] = useState(PAGE_SIZE);
   const categories = useMemo(() => {
@@ -48,10 +48,10 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
       if (excluded?.has(name)) return false;
       if (media === 'videos' && !getExerciseDemo(name)) return false;
       if (media === 'pictures' && !getExerciseVisual(name)) return false;
-      if (media === 'animations' || media === 'blender') {
+      if (media === 'blender') {
         const visual = getExerciseVisual(name);
         const motion = visual && getExerciseMotion(visual.id);
-        if (!motion || (media === 'blender' && motion !== 'blender')) return false;
+        if (motion !== 'blender') return false;
       }
       const details = getExerciseDetails(name);
       if (equipment && details.equipment !== equipment) return false;
@@ -98,7 +98,6 @@ export default function ExerciseLibrary({ search, onSearch, onCreate, customExer
           <option value="all">All guides</option>
           <option value="pictures">With pictures</option>
           <option value="videos">With video</option>
-          <option value="animations">With animation</option>
           <option value="blender">With 3D animation</option>
         </select>}
       </div>

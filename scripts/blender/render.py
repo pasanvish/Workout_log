@@ -14,6 +14,11 @@ from mathutils import Vector
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from poses import MOTIONS
+import chest_back
+import legs
+import upper
+import core
+import mobility
 from rig import build_body, color
 from stage import Stage, box
 
@@ -64,9 +69,20 @@ def setup_scene(view, target, scale, size):
     scene.camera = camera
 
 
-def encode(path, forward):
-    # The ascent and return reuse the same authored motion with a short pause at each end.
-    order = [forward[0]] * 4 + forward + [forward[-1]] * 4 + forward[-2:0:-1]
+ONE_WAY = {"medicine-ball-chest-pass", "medicine-ball-slam", "original-barbell-walking-lunge",
+           "original-cross-body-crunch", "original-kettlebell-halo", "original-monster-walk",
+           "original-push-up-to-side-plank"}
+FORWARD_SECONDS = {"turkish-get-up": 5, "original-push-up-to-side-plank": 5,
+                   "original-cross-body-crunch": 2, "original-barbell-walking-lunge": 2,
+                   "original-step-up-with-knee-raise": 2, "jump-squat": 1.5, "medicine-ball-slam": 1.5}
+
+
+def encode(path, forward, layout, name):
+    # A held position is shown longer. Throws and steps reset at the end of the clip.
+    pause = FPS * 2 if "hold" in layout else 8 if name in ONE_WAY else 4
+    order = [forward[0]] * 4 + forward + [forward[-1]] * pause
+    if name not in ONE_WAY:
+        order += forward[-2:0:-1]
     subprocess.run([
         "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "image2pipe", "-r", str(FPS), "-i", "-",
         "-an", "-c:v", "libx264", "-profile:v", "baseline", "-crf", "20", "-pix_fmt", "yuv420p",
@@ -75,7 +91,10 @@ def encode(path, forward):
 
 
 def export_artwork(destination, name, layout, forward):
-    positions = {"start": forward[0], "mid": forward[len(forward) // 2], "end": forward[-1], "pose": forward[len(forward) // 2]}
+    peak = {"original-push-up-to-side-plank": .66, "original-cross-body-crunch": .34,
+            "original-kettlebell-halo": .50}.get(name, 1)
+    positions = {"start": forward[0], "mid": forward[len(forward) // 2], "end": forward[round((len(forward) - 1) * peak)],
+                 "pose": forward[len(forward) // 2], "hold": forward[-1]}
     for label in (*layout, "thumb"):
         source = positions[layout[0]] if label == "thumb" else positions[label]
         sizing = ["-resize", "176", "0"] if label == "thumb" else []
@@ -84,14 +103,15 @@ def export_artwork(destination, name, layout, forward):
         ], check=True)
 
 
-def render_rep(pose, folder):
+def render_rep(pose, folder, name):
     scene = bpy.context.scene
     scene.frame_start = 1
-    scene.frame_end = FPS + 1
+    frame_count = int(FPS * FORWARD_SECONDS.get(name, 1))
+    scene.frame_end = frame_count + 1
     scene.render.filepath = f"{folder}/"
 
     def position(current_scene):
-        time = (current_scene.frame_current - 1) / FPS
+        time = (current_scene.frame_current - 1) / frame_count
         pose((1 - math.cos(math.pi * time)) / 2)
 
     bpy.app.handlers.frame_change_pre.append(position)
@@ -99,7 +119,7 @@ def render_rep(pose, folder):
         bpy.ops.render.render(animation=True)
     finally:
         bpy.app.handlers.frame_change_pre.remove(position)
-    return [Path(folder) / f"{i:04}.png" for i in range(1, FPS + 2)]
+    return [Path(folder) / f"{i:04}.png" for i in range(1, frame_count + 2)]
 
 
 def main():
@@ -134,8 +154,8 @@ def main():
                 bpy.ops.render.render(write_still=True)
         else:
             with tempfile.TemporaryDirectory(prefix="gymlogger-blender-") as temp:
-                frames = render_rep(pose, temp)
-                encode(args.out / f"3d-{name}.mp4", frames)
+                frames = render_rep(pose, temp, name)
+                encode(args.out / f"3d-{name}.mp4", frames, layouts[name], name)
                 export_artwork(args.artwork, name, layouts[name], frames)
         print(f"Rendered {name}", flush=True)
 

@@ -19,16 +19,14 @@ test('every built-in exercise has an offline thumbnail and guide artwork', () =>
   }
 });
 
-test('motion sources point to bundled MP4s for existing exercise guides', () => {
+test('every built-in exercise has a bundled Blender animation, including holds', () => {
   const assets = new URL('./public/exercise-motion/', import.meta.url);
   const expected = new Set<string>();
   for (const name of Object.values(MASTER_EXERCISE_LIST).flat()) {
     const visual = getExerciseVisual(name);
-    const source = visual && getExerciseMotion(visual.id);
-    if (!visual || !source) continue;
-    assert.ok(source === 'blender' || source === 'interpolated', name);
-    assert.notEqual(visual.frames[0], 'hold', name);
-    if (source === 'interpolated') assert.ok(visual.frames.length > 1, name);
+    assert.ok(visual, `Missing exercise artwork for ${name}`);
+    const source = getExerciseMotion(visual.id);
+    assert.equal(source, 'blender', `Missing Blender animation for ${name}`);
     expected.add(exerciseMotionFile(visual.id, source));
   }
   assert.equal(expected.size, Object.keys(motion).length);

@@ -2096,7 +2096,8 @@
   "Dumbbell Side Bend": {
     "id": "dumbbell-side-bend",
     "frames": [
-      "hold"
+      "start",
+      "end"
     ],
     "width": 1536,
     "height": 1024
@@ -2247,7 +2248,7 @@
   "90/90 Hamstring Stretch": {
     "id": "original-90-90-hamstring-stretch",
     "frames": [
-      "pose"
+      "hold"
     ],
     "width": 423,
     "height": 423,
@@ -2351,7 +2352,7 @@
   "Standing Soleus And Achilles Stretch": {
     "id": "original-standing-soleus-and-achilles-stretch",
     "frames": [
-      "pose"
+      "hold"
     ],
     "width": 423,
     "height": 423,
