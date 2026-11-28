@@ -12,6 +12,7 @@ import { exportName, saveExport } from './exports';
 import PRNotificationModal from './components/PRNotificationModal';
 import { WorkoutLog, Profile, CustomRoutine, CustomExercise, BodyMeasurementLog, Badge } from './types';
 import BodyMeasurements from './components/BodyMeasurements';
+import ExerciseGuideTab from './components/ExerciseGuideTab';
 import { Capacitor } from '@capacitor/core';
 
 const ANDROID_APK_URL = 'https://github.com/pasanvish/Workout_log/releases/latest/download/GymLogger.apk';
@@ -37,7 +38,7 @@ const App: React.FC = () => {
   
   const [newlySetPRs, setNewlySetPRs] = useState<Array<{ exerciseName: string; label: string; value: string }>>([]);
   const [isAppReady, setIsAppReady] = useState(false);
-  const [activeTab, setActiveTab] = useState<'logger' | 'measurements'>('logger');
+  const [activeTab, setActiveTab] = useState<'logger' | 'measurements' | 'exercises'>('logger');
   const [showAndroidBanner, setShowAndroidBanner] = useState(() => {
     try {
       return /Android/i.test(navigator.userAgent) && !Capacitor.isNativePlatform() && !localStorage.getItem('hideAndroidBanner');
@@ -222,8 +223,9 @@ const App: React.FC = () => {
   }
 
   const tabs = [
-    { id: 'logger' as const, label: 'Workout', icon: 'M4 10h2m12 0h2M6 7v6m12-6v6M8 8.5v3m8-3v3M8 10h8' },
-    { id: 'measurements' as const, label: 'Body', icon: 'M4 19h16M6 15l3-4 3 2 3-5 3 3' },
+    { id: 'logger' as const, label: 'Workout', desktopLabel: 'Workouts', icon: 'M4 10h2m12 0h2M6 7v6m12-6v6M8 8.5v3m8-3v3M8 10h8' },
+    { id: 'measurements' as const, label: 'Body', desktopLabel: 'Measurements', icon: 'M4 19h16M6 15l3-4 3 2 3-5 3 3' },
+    { id: 'exercises' as const, label: 'Exercises', desktopLabel: 'Exercises', icon: 'M4 5h16v14H4zM10 9l5 3-5 3z' },
   ];
 
   return (
@@ -269,7 +271,7 @@ const App: React.FC = () => {
                 onClick={() => setActiveTab(t.id)}
                 aria-pressed={activeTab === t.id}
               >
-                {t.id === 'logger' ? 'Workouts' : 'Measurements'}
+                {t.desktopLabel}
               </button>
             ))}
             </div>
@@ -288,6 +290,9 @@ const App: React.FC = () => {
                     onAchievements={() => openHistory('Badges')}
                 />
             )}
+            {activeTab === 'exercises' && (
+                <ExerciseGuideTab customExercises={activeCustomExercises} onAddCustomExercise={addCustomExercise} />
+            )}
             {activeTab === 'measurements' && (
                 <BodyMeasurements 
                     logs={activeBodyMeasurements}
@@ -297,7 +302,7 @@ const App: React.FC = () => {
         </div>
       </main>
       <nav aria-label="Main navigation" className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-background-light/95 backdrop-blur-sm border-t border-border-color/60 pb-[env(safe-area-inset-bottom)]">
-        <div className="grid grid-cols-3 gap-1 px-2 py-1.5">
+        <div className="grid grid-cols-4 gap-1 px-2 py-1.5">
           {tabs.map(t => (
             <button
               key={t.id}
