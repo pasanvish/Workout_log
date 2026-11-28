@@ -73,6 +73,15 @@ All your workout data is stored in your browser's `localStorage` under the key `
 - **Backup**: It is highly recommended to use the **Export** feature regularly to back up your data. Choose **Full backup (.json)** to export the active profile’s workouts, routines, weekly plan, custom exercises, measurements, and appearance. Android opens a Save As dialog.
 - **Restore**: Use **Import backup** to restore a Gym Logger JSON file into the selected profile. Existing entries keep their values. **Workout report (.html)** exports a readable report that can be opened and printed in a browser.
 
+**Workout CSV imports** are available under **History → Import & export**. Export your workouts from Hevy, Strong, or FitNotes, then review the import before saving. KG and lb are supported. Unlabelled weights and ambiguous dates ask for a format. A repeat import skips workouts already imported from the same source. FitNotes entries are grouped by date. History keeps weights, reps, timed sets, and exercise notes, and adds unmatched exercises to your custom library. Distance, assisted loads, and workout-level notes are outside the supported fields.
+
+### Training tools and offline coaching
+
+- In a workout, use **Swap exercise** to find alternatives by target muscles and available equipment. Swaps apply to the current workout.
+- Open **Next-set suggestion** to see how your last comparable working sets inform a rep, load, or time target. You can select a rep range for the suggestion.
+- In **History → Progress**, **Weekly coach** and **Ask your log** use on-device workout data for training comparisons, muscle coverage, upcoming routines, and progression. They work without a download or internet connection.
+- Android can optionally download **Lite** (SmolLM2 135M, about 143 MB) for a brief recap or **Qwen3 0.6B** (about 345 MB) for a two-week recap. Qwen uses Compact settings on supported 64-bit phones with about 4 GB of RAM when sufficient RAM is free. Gym Logger checks recap counts against the log and supplies its own recap when the output falls outside the supported format.
+
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/pasanvish/Workout_log/issues).

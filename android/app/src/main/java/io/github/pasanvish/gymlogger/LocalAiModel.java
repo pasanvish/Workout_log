@@ -19,7 +19,7 @@ enum LocalAiModel {
     QWEN("qwen", "Qwen3 0.6B", "qwen3-0.6b-e6bb3e4a.litertlm", 344_671_744L,
         "03e7da1eb1108b50dffaa9bb52cc7bcbad2eb0c66ca990267f480c1e545d2856",
         "Qwen3-0.6B/resolve/e6bb3e4a1eb3f663153f0c1c12b735d64be657a7/Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm",
-        5_000_000_000L, 1_700_000_000L, 768, 4);
+        3_000_000_000L, 1_700_000_000L, 768, 4);
 
     final String id;
     final String name;

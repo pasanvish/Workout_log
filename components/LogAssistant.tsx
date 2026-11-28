@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { answerLogQuestion, LOG_QUESTIONS } from '../logAssistant';
-import type { ProfilePRs, WorkoutLog } from '../types';
+import type { WeeklyPlan } from '../weeklyPlan';
+import type { CustomExercise, CustomRoutine, ProfilePRs, WorkoutLog } from '../types';
 
 interface LogAssistantProps {
   logs: WorkoutLog[];
   records: ProfilePRs;
   goal: number;
+  customExercises: CustomExercise[];
+  routines: CustomRoutine[];
+  plan: WeeklyPlan;
 }
 
-export default function LogAssistant({ logs, records, goal }: LogAssistantProps) {
+export default function LogAssistant({ logs, records, goal, customExercises, routines, plan }: LogAssistantProps) {
   const [question, setQuestion] = useState('');
   const [submitted, setSubmitted] = useState('');
 
@@ -22,7 +26,7 @@ export default function LogAssistant({ logs, records, goal }: LogAssistantProps)
         </span>
         <div>
           <h3 className="text-lg font-semibold">Ask your log</h3>
-          <p className="text-sm text-text-secondary">Ask about your workouts and records. Answers use the training data on this device.</p>
+          <p className="text-sm text-text-secondary">Ask about your progress, your next workout, or the muscles you trained. Answers come from your log.</p>
         </div>
       </div>
       <form className="mt-4 flex gap-2" onSubmit={event => { event.preventDefault(); setSubmitted(question.trim()); }}>
@@ -38,7 +42,7 @@ export default function LogAssistant({ logs, records, goal }: LogAssistantProps)
         ))}
       </div>
       {submitted && <p role="status" className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-background-dark p-3 text-sm leading-relaxed">
-        {answerLogQuestion(submitted, logs, records, goal)}
+        {answerLogQuestion(submitted, logs, records, goal, new Date(), { customExercises, routines, plan })}
       </p>}
     </section>
   );

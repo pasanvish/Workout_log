@@ -55,7 +55,11 @@ public class LocalAiPlugin extends Plugin {
     private String unsupportedReason(LocalAiModel model, ActivityManager.MemoryInfo memory) {
         if (!Process.is64Bit()) return "Offline AI needs a 64-bit Android device.";
         if (memory.totalMem >= model.minimumTotalMemory) return null;
-        return model == LocalAiModel.LITE ? "Lite needs about 4 GB of RAM." : "Standard needs about 6 GB of RAM.";
+        return "Downloaded AI models need about 4 GB of RAM.";
+    }
+
+    private static boolean compactMode(LocalAiModel model, ActivityManager.MemoryInfo memory) {
+        return model == LocalAiModel.QWEN && memory.totalMem < 5_000_000_000L;
     }
 
     @PluginMethod
@@ -78,7 +82,7 @@ public class LocalAiPlugin extends Plugin {
                     state = bytes > 0 ? "paused" : "available";
                 }
                 models.put(new JSObject().put("id", model.id).put("name", model.name).put("state", state)
-                    .put("bytes", bytes).put("total", model.size)
+                    .put("bytes", bytes).put("total", model.size).put("compact", compactMode(model, memory))
                     .put("message", unsupported == null ? problems.get(model) : unsupported));
             }
             call.resolve(new JSObject().put("models", models).put("busy", activeModel != null));
@@ -198,30 +202,30 @@ public class LocalAiPlugin extends Plugin {
             activeModel = model;
             operation = "generating";
             problems.remove(model);
-            WORKER.execute(() -> generate(model, facts, file, cache, call));
+            boolean compact = compactMode(model, memory);
+            WORKER.execute(() -> generate(model, compact, facts, file, cache, call));
         }
     }
 
-    private static void generate(LocalAiModel model, String facts, File file, String cache, PluginCall call) {
+    private static void generate(LocalAiModel model, boolean compact, String facts, File file, String cache, PluginCall call) {
         JSObject result = null;
         try {
             boolean lite = model == LocalAiModel.LITE;
-            var config = new EngineConfig(file.getAbsolutePath(), new Backend.CPU(model.threads, null),
-                null, null, model.contextTokens, null, lite ? ":nocache" : cache);
+            var config = new EngineConfig(file.getAbsolutePath(), new Backend.CPU(compact ? 2 : model.threads, null),
+                null, null, compact ? 256 : model.contextTokens, null, lite || compact ? ":nocache" : cache);
             try (var engine = new Engine(config)) {
                 engine.initialize();
                 String instructions = lite
                     ? "Write one short workout recap in the second person. Use the exact numbers supplied. Return one sentence starting with You."
-                    : "Summarize this workout log in two short sentences. Use only the facts supplied. "
-                        + "Include the current week's workout and set counts. Compare with last week only if that is useful. "
-                        + "Use plain English. Do not guess numbers or give training advice.";
+                    : "Write exactly two short sentences with workout and set counts. "
+                        + "Start the first with This week: and the second with Last week:. Use the supplied counts and stop after the second sentence.";
                 var contents = Contents.Companion.of(instructions);
-                var conversationConfig = lite
+                var conversationConfig = lite || compact
                     ? new ConversationConfig(contents, Collections.emptyList(), Collections.emptyList(), new SamplerConfig(1, 1.0, 0.0, 0))
                     : new ConversationConfig(contents);
                 try (var conversation = engine.createConversation(conversationConfig)) {
                     var reply = conversation.sendMessage(facts, lite ? Collections.emptyMap() : Collections.singletonMap("enable_thinking", false),
-                        null, null, null, lite ? 45 : 100, lite ? null : new ThinkingConfig(false), null);
+                        null, null, null, lite ? 45 : compact ? 48 : 100, lite ? null : new ThinkingConfig(false), null);
                     StringBuilder summary = new StringBuilder();
                     for (Content content : reply.getContents().getContents()) {
                         if (content instanceof Content.Text) summary.append(((Content.Text) content).getText());

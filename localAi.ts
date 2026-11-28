@@ -12,6 +12,7 @@ interface ModelStatus {
   state: ModelState;
   bytes: number;
   total: number;
+  compact?: boolean;
   message?: string;
 }
 
@@ -24,18 +25,7 @@ export const localAi = registerPlugin<{
   summarize(options: { model: ModelId; facts: string }): Promise<{ summary: string }>;
 }>('LocalAi');
 
-const quantity = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
-
-export function formatLiteRecap(modelText: string, workouts: number, sets: number) {
-  const counts = `${quantity(workouts, 'workout')} and ${quantity(sets, 'set')}`;
-  const past = '(?:logged|completed|recorded|did)';
-  const valid = new RegExp(`^(?:This week,? you ${past} ${counts}|You ${past} ${counts} this week)[.!]?$`, 'i');
-  const summary = modelText.trim().replace(/\s+/g, ' ')
-    .replace(/^I /i, 'You ').replace(/^This week,? I /i, 'This week, you ');
-  return valid.test(summary)
-    ? { summary, generated: true }
-    : { summary: `You logged ${counts} this week.`, generated: false };
-}
+const quantity = (value: number, noun: string) => `${value} ${noun}${value === 1 ? '' : 's'}`;
 
 export function weeklySummaryFacts(logs: WorkoutLog[], goal: number, now = new Date()) {
   const thisWeekStart = weekStart(now);
@@ -55,8 +45,22 @@ export function weeklySummaryFacts(logs: WorkoutLog[], goal: number, now = new D
     key: `${thisWeekStart}:${goal}:${thisWeek.workouts}:${thisWeek.sets}:${lastWeek.workouts}:${lastWeek.sets}`,
     thisWeek,
     lastWeek,
-    litePrompt: `Rewrite this as a short fitness recap. ${formatLiteRecap('', thisWeek.workouts, thisWeek.sets).summary}`,
-    facts: `This week: ${thisWeek.workouts} workouts and ${thisWeek.sets} logged sets. `
-      + `Last week: ${lastWeek.workouts} workouts and ${lastWeek.sets} logged sets. Weekly workout goal: ${goal}.`,
+    facts: `This week: ${quantity(thisWeek.workouts, 'workout')} and ${thisWeek.sets} logged ${thisWeek.sets === 1 ? 'set' : 'sets'}. `
+      + `Last week: ${quantity(lastWeek.workouts, 'workout')} and ${lastWeek.sets} logged ${lastWeek.sets === 1 ? 'set' : 'sets'}. Weekly workout goal: ${goal}.`,
   };
+}
+
+export function workoutRecap(model: ModelId, text: string, weekly: ReturnType<typeof weeklySummaryFacts>) {
+  const counts = (week: typeof weekly.thisWeek) => `${quantity(week.workouts, 'workout')} and ${quantity(week.sets, 'set')}`;
+  const current = counts(weekly.thisWeek);
+  const prior = counts(weekly.lastWeek);
+  const fallback = model === 'lite' ? `You logged ${current} this week.` : `This week: ${current}. Last week: ${prior}.`;
+  const description = text.trim().replace(/\s+/g, ' ')
+    .replace(/^I /i, 'You ').replace(/^This week,? I /i, 'This week, you ');
+  const withLogged = (value: string) => value.replace(' and ', ' and (?:logged )?');
+  const shape = model === 'lite'
+    ? `^(?:This week,? you (?:logged|completed|recorded|did) ${withLogged(current)}|You (?:logged|completed|recorded|did) ${withLogged(current)} this week)[.!]?$`
+    : `^This week: ${withLogged(current)}[.!] Last week: ${withLogged(prior)}[.!]`;
+  const verified = new RegExp(shape, 'i').exec(description)?.[0];
+  return { summary: verified ?? fallback, generated: Boolean(verified) };
 }

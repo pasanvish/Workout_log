@@ -1,12 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import WorkoutHistory, { type HistoryView } from './WorkoutHistory';
-import { WorkoutLog, Profile, ProfilePRs, CustomExercise } from '../types';
+import type { WeeklyPlan } from '../weeklyPlan';
+import { WorkoutLog, Profile, ProfilePRs, CustomExercise, CustomRoutine } from '../types';
 
 interface HistoryDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   logs: WorkoutLog[];
   customExercises: CustomExercise[];
+  routines: CustomRoutine[];
+  plan: WeeklyPlan;
   onImportLogs: (data: unknown) => string;
   onDeleteLog: (logId: string) => void;
   onUpdateLog: (log: WorkoutLog) => void;
@@ -17,7 +20,7 @@ interface HistoryDrawerProps {
   onViewChange: (view: HistoryView) => void;
 }
 
-const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, customExercises, onImportLogs, onExportLogs, activeProfile, personalRecords, onDeleteLog, onUpdateLog, view, onViewChange }) => {
+const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, customExercises, routines, plan, onImportLogs, onExportLogs, activeProfile, personalRecords, onDeleteLog, onUpdateLog, view, onViewChange }) => {
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,7 +74,7 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ isOpen, onClose, logs, cu
         aria-labelledby="history-drawer-title"
       >
         <div className="h-full flex flex-col">
-            <WorkoutHistory view={view} onViewChange={onViewChange} logs={logs} customExercises={customExercises} isOpen={isOpen} onImportLogs={onImportLogs} onExportLogs={onExportLogs} onClose={onClose} activeProfile={activeProfile} personalRecords={personalRecords} onDeleteLog={onDeleteLog} onUpdateLog={onUpdateLog} />
+            <WorkoutHistory view={view} onViewChange={onViewChange} logs={logs} customExercises={customExercises} routines={routines} plan={plan} isOpen={isOpen} onImportLogs={onImportLogs} onExportLogs={onExportLogs} onClose={onClose} activeProfile={activeProfile} personalRecords={personalRecords} onDeleteLog={onDeleteLog} onUpdateLog={onUpdateLog} />
         </div>
       </div>
     </>

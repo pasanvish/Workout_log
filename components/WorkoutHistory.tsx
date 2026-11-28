@@ -9,10 +9,12 @@ import SetDetails from './SetDetails';
 import ExerciseNotes from './ExerciseNotes';
 import LogAssistant from './LogAssistant';
 import OfflineAi from './OfflineAi';
+import HistoryImportModal from './HistoryImportModal';
 import WorkoutCalendar from './WorkoutCalendar';
 import MuscleVolume from './MuscleVolume';
 import MuscleDashboard from './MuscleDashboard';
-import { hasNativeAi } from '../localAi';
+import type { WeeklyPlan } from '../weeklyPlan';
+import type { CustomRoutine } from '../types';
 import { localDayKey, localLogDate } from '../training';
 import { supersetLabels } from '../workoutFlow';
 import { DEFAULT_WEEKLY_GOAL } from '../profile';
@@ -26,6 +28,8 @@ import { exportName, saveExport, workoutReport } from '../exports';
 interface WorkoutHistoryProps {
   logs: WorkoutLog[];
   customExercises: CustomExercise[];
+  routines: CustomRoutine[];
+  plan: WeeklyPlan;
   isOpen: boolean;
   onImportLogs: (data: unknown) => string;
   onDeleteLog: (logId: string) => void;
@@ -79,9 +83,11 @@ const Chevron = ({ open }: { open: boolean }) => (
   </svg>
 );
 
-const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, customExercises, isOpen, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords, onDeleteLog, onUpdateLog, view, onViewChange }) => {
+const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, customExercises, routines, plan, isOpen, onImportLogs, onExportLogs, onClose, activeProfile, personalRecords, onDeleteLog, onUpdateLog, view, onViewChange }) => {
   const [fileStatus, setFileStatus] = useState('');
   const [fileBusy, setFileBusy] = useState(false);
+  const csvInput = useRef<HTMLInputElement>(null);
+  const [importFile, setImportFile] = useState<{ csv: string; profileId: string }>();
   const [draft, setDraft] = useState<WorkoutLog | null>(null);
 
   const editExercise = (index: number, update: (exercise: Exercise) => Exercise) => {
@@ -210,6 +216,21 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, customExercises, 
       setFileStatus(onImportLogs(JSON.parse(await file.text())));
     } catch {
       setFileStatus('Import failed. Choose a valid Gym Logger JSON backup.');
+    } finally {
+      setFileBusy(false);
+    }
+  };
+
+  const readHistoryCsv = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !activeProfile) return;
+    setFileBusy(true);
+    setFileStatus('');
+    try {
+      setImportFile({ csv: await file.text(), profileId: activeProfile.id });
+    } catch {
+      setFileStatus('Could not read the CSV. Try exporting it again.');
     } finally {
       setFileBusy(false);
     }
@@ -386,8 +407,10 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, customExercises, 
               <span className="min-w-0 flex-1"><strong className="block text-sm">View muscle distribution</strong><span className="block text-xs text-text-secondary">Body map and training volume by muscle group</span></span>
               <span aria-hidden="true" className="text-brand-light">→</span>
             </button>
-            <LogAssistant logs={logs} records={personalRecords} goal={activeProfile?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL} />
-            {hasNativeAi && <OfflineAi key={activeProfile?.id} active={isOpen} logs={logs} goal={activeProfile?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL} />}
+            <LogAssistant logs={logs} records={personalRecords} goal={activeProfile?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL}
+              customExercises={customExercises} routines={routines} plan={plan} />
+            <OfflineAi key={activeProfile?.id} active={isOpen} logs={logs} customExercises={customExercises} routines={routines}
+              plan={plan} goal={activeProfile?.weeklyGoal ?? DEFAULT_WEEKLY_GOAL} onMuscles={() => onViewChange('Muscles')} />
             <section className="tracking-panel">
               <h3 className="text-lg font-semibold">Exercise progress</h3>
               <p className="mt-1 text-sm text-text-secondary">{metricInfo?.description ?? 'Track weight, bodyweight reps, or hold duration.'}</p>
@@ -470,12 +493,18 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ logs, customExercises, 
           <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Import &amp; export</summary>
           <div className="flex flex-wrap gap-2 border-t border-border-color/60 p-3">
             <button onClick={handleImportClick} className="panel-action" disabled={fileBusy}><UploadIcon /> Import backup</button>
+            <button onClick={() => csvInput.current?.click()} className="panel-action" disabled={fileBusy || !activeProfile}><UploadIcon /> Import workout CSV</button>
             <button onClick={() => void exportFile(onExportLogs)} className="panel-action" disabled={fileBusy}><DownloadIcon /> Full backup (.json)</button>
             {logs.length > 0 && <button onClick={() => void exportFile(exportReport)} className="panel-action" disabled={fileBusy}><DownloadIcon /> Workout report (.html)</button>}
           </div>
           {fileStatus && <p role="status" className="px-4 pb-3 text-sm text-text-secondary">{fileStatus}</p>}
         </details>
         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json,application/json" hidden />
+        <input type="file" ref={csvInput} onChange={readHistoryCsv} accept=".csv,text/csv" hidden />
+        {isOpen && importFile && activeProfile?.id === importFile.profileId && <HistoryImportModal
+          csv={importFile.csv} logs={logs} customExercises={customExercises} onClose={() => setImportFile(undefined)}
+          onImport={data => { setFileStatus(onImportLogs(data)); setImportFile(undefined); }}
+        />}
       </div>
     </>
   );
